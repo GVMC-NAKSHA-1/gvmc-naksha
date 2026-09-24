@@ -1,0 +1,124 @@
+@import 'tailwindcss';
+
+/* Design tokens from frontend.md §6, exposed as Tailwind theme values
+   (bg-primary, text-ink, border-line, shadow-float, animate-fade-up, …). */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+
+  --color-primary: #0d6efd;
+  --color-primary-hover: #0b5ed7;
+  --color-primary-light: #e7f1ff;
+  --color-primary-dark: #084298;
+  --color-success: #198754;
+  --color-success-light: #d1e7dd;
+  --color-success-dark: #0f5132;
+  --color-danger: #dc3545;
+  --color-danger-light: #f8d7da;
+  --color-danger-dark: #842029;
+  --color-warning: #ffc107;
+  --color-warning-light: #fff3cd;
+  --color-warning-dark: #664d03;
+  --color-info: #0dcaf0;
+  --color-info-light: #cff4fc;
+  --color-info-dark: #055160;
+  --color-orange: #fd7e14;
+  --color-orange-light: #ffe5d0;
+  --color-orange-dark: #7d2e00;
+  --color-purple: #6f42c1;
+  --color-purple-light: #e8daef;
+  --color-neutral-light: #e9ecef;
+  --color-neutral-dark: #495057;
+
+  --color-canvas: #f8f6f3;
+  --color-hover: #f2f0ec;
+  --color-ink: #212529;
+  --color-subtle: #6c757d;
+  --color-faint: #adb5bd;
+  --color-line: #dee2e6;
+  --color-line-light: #e9ecef;
+
+  --color-ndbi-high: #c0392b;
+  --color-ndbi-moderate: #e67e22;
+  --color-ndbi-low: #f1c40f;
+  --color-ndbi-minimal: #f9e79f;
+  --color-ndbi-none: #ecf0f1;
+
+  --shadow-float: 0 24px 48px -12px rgb(20 20 20 / 0.18), 0 4px 12px -2px rgb(20 20 20 / 0.08);
+  --shadow-focus: 0 0 0 3px #e7f1ff;
+
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --animate-fade-up: fade-up 250ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  --animate-scale-in: scale-in 200ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  --animate-shimmer: shimmer 1.2s ease-in-out infinite;
+  --animate-pulse-fade: pulse-fade 1s ease-in-out infinite;
+  --animate-typing: typing-bounce 1.2s ease-in-out infinite;
+  --animate-scan: scan 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+
+  @keyframes fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes scale-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  @keyframes pulse-fade { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+  @keyframes scan {
+    0% { transform: translateY(0); opacity: 0; }
+    15%, 85% { opacity: 1; }
+    100% { transform: translateY(94px); opacity: 0; }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-canvas text-ink text-sm antialiased;
+    background-image: radial-gradient(ellipse 900px 480px at 50% -8%, rgb(13 110 253 / 0.05), transparent 60%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+  button:not(:disabled) { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+}
+
+/* Frosted floating surface used for panels over the map. */
+@utility glass {
+  background: color-mix(in srgb, white 86%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid color-mix(in srgb, var(--color-line) 65%, transparent);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-float);
+}
+
+@utility skeleton {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--color-canvas) 25%, var(--color-hover) 50%, var(--color-canvas) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: var(--animate-shimmer);
+}
+
+/* AI markdown output (react-markdown) */
+@utility markdown {
+  @apply text-sm leading-relaxed text-ink;
+  & > * + * { @apply mt-2; }
+  & h1, & h2, & h3 { @apply mt-3 text-base font-semibold; }
+  & ul { @apply list-disc pl-5; }
+  & ol { @apply list-decimal pl-5; }
+  & strong { @apply font-semibold; }
+  & table { @apply w-full border-collapse text-xs; }
+  & th, & td { @apply border border-line-light px-2 py-1 text-left; }
+  & code { @apply rounded bg-canvas px-1 font-mono; }
+}
+
+/* MapLibre popup restyle */
+.maplibregl-popup-content {
+  @apply rounded-lg px-3 py-2 text-xs text-ink shadow-md;
+  font-family: var(--font-sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}

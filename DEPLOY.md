@@ -48,7 +48,6 @@ else (DB/Auth, storage, queue, LLM, maps, email) is an external managed service.
 | **A Docker host** (any VM with SSH) | Running the backend API + worker in prod | No way to serve the API outside your laptop |
 | **Vercel** | Hosting the frontend | No way to serve the UI outside `npm run dev` |
 | Groq API key | AI-generated chat answers / briefs / alerts / schema mapping | Those features return templated/deterministic text instead of a 500 |
-| Google Maps API key | Rendering the satellite basemap | Map panel shows a hint instead of a map |
 | Brevo API key | Sending ward-alert / ticket-review emails | Emails are skipped (logged, non-fatal) |
 
 ---
@@ -93,7 +92,7 @@ curl -X POST "localhost:3000/api/harmonization/run?wardId=4" -H "x-dev-role: adm
 curl "localhost:3000/api/harmonized/export?wardId=4&format=geojson" -H "x-dev-role: admin"
 ```
 
-Open `http://localhost:3001/login`, pick a role, and click through the dashboards.
+Open `http://localhost:3001`, pick a workspace, and click through the dashboards.
 If this all works, you're ready to move to real infrastructure.
 
 ---
@@ -113,8 +112,8 @@ Do these in order; later steps need the values produced here.
    psql "$DATABASE_URL" -f database/seed/seed.sql            # wards + admin config
    ```
    (Or adapt `database/migrate.sh`, which applies all of them in order automatically.)
-4. Settings → API → grab `SUPABASE_URL` (also `NEXT_PUBLIC_SUPABASE_URL`, same value),
-   `SUPABASE_ANON_KEY` (also `NEXT_PUBLIC_SUPABASE_ANON_KEY`), and `SUPABASE_SERVICE_ROLE_KEY`
+4. Settings → API → grab `SUPABASE_URL` (also `VITE_SUPABASE_URL`, same value),
+   `SUPABASE_ANON_KEY` (also `VITE_SUPABASE_ANON_KEY`), and `SUPABASE_SERVICE_ROLE_KEY`
    (backend only — **never** ship this to the browser).
 5. Set `AUTH_DEV_BYPASS=false` and `PROFILES_SOURCE=supabase` once this is wired.
 
@@ -140,12 +139,12 @@ Do these in order; later steps need the values produced here.
 2. Without this, `/chat`, `/brief`, alerts, and schema-mapping still work but return
    templated/deterministic output instead of LLM output.
 
-### 4.5 Google Maps JS API (optional — basemap)
+### 4.5 Map basemap (no key needed)
 
-1. console.cloud.google.com → enable **Maps JavaScript API** → create an API key.
-2. Restrict the key by HTTP referrer to your frontend domain(s).
-3. `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — goes in Vercel env vars (and `frontend/.env.local`
-   for local dev).
+The frontend uses MapLibre GL with OpenStreetMap (streets) and Esri World Imagery (satellite)
+raster tiles — nothing to configure. For heavy production traffic, switch `BASE_STYLE` in
+`frontend/src/components/mapStyle.js` to a tile provider you have an agreement with (OSM's public
+tile servers are for light use only).
 
 ### 4.6 Brevo (optional — email alerts)
 
@@ -232,10 +231,10 @@ done
 If you deploy the frontend via `deploy-frontend.yml` instead of Vercel's Git integration, also
 set: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (read directly in that workflow).
 
-### What about Vercel's `NEXT_PUBLIC_*` values?
+### What about the frontend's `VITE_*` values?
 
-Those (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) are **not** GitHub Secrets or Variables — with Option A
+Those (`VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — the older
+`NEXT_PUBLIC_*` names are still accepted) are **not** GitHub Secrets or Variables — with Option A
 (recommended) they live entirely in the Vercel dashboard's Environment Variables page. They
 only need to exist on the GitHub side if you're using Option B, where Vercel's own CLI (`vercel
 pull`) fetches them from your already-configured Vercel project — you still set them in Vercel,
@@ -285,10 +284,12 @@ Pick **one** of these two paths — don't run both.
 1. vercel.com → Import Project → select your GitHub repo.
 2. Root Directory = `frontend/`.
 3. Project → Settings → Environment Variables, set:
-   - `NEXT_PUBLIC_API_URL` → `https://api.yourdomain.com` (your backend's public URL)
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+   - `VITE_API_URL` → `https://api.yourdomain.com` (your backend's public URL)
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+
+   These are baked in at build time — redeploy after changing them. `frontend/vercel.json` sets the
+   Vite framework preset and the SPA rewrite so deep links like `/officer` work.
 4. Every push to `main` auto-deploys. You can disable/delete `.github/workflows/deploy-frontend.yml`
    if you use this path, to avoid a duplicate deploy.
 
@@ -358,14 +359,13 @@ curl https://api.yourdomain.com/api/health
 | `REDIS_URL` | host `.env`, GH secret | ✅ prod | Upstash Redis job queue (blank = bundled container locally) |
 | `AUTH_DEV_BYPASS` | host `.env` | must be `false` in prod | `true` = no-auth dev mode; **never** set `true` on a deployed env |
 | `PROFILES_SOURCE` | host `.env` | when auth bypass off | `local` or `supabase` |
-| `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` | host `.env` / Vercel | ✅ prod | Supabase project URL |
-| `SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel | ✅ prod | client-side auth |
+| `SUPABASE_URL` / `VITE_SUPABASE_URL` | host `.env` / Vercel | ✅ prod | Supabase project URL |
+| `SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY` | Vercel | ✅ prod | client-side auth |
 | `SUPABASE_SERVICE_ROLE_KEY` | host `.env`, GH secret | ✅ prod | backend-only, verifies JWTs / admin ops |
 | `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | host `.env`, GH secret | ✅ for uploads/export | Cloudflare R2 |
 | `R2_ENDPOINT` | host `.env` | optional | override for MinIO/LocalStack instead of R2 |
 | `GROQ_API_KEY` | host `.env`, GH secret | optional | LLM chat/brief/alerts/schema-map |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Vercel, `frontend/.env.local` | optional | map basemap |
-| `NEXT_PUBLIC_API_URL` / `API_URL` | Vercel / host `.env` | ✅ prod | backend base URL the frontend calls |
+| `VITE_API_URL` / `API_URL` | Vercel / host `.env` | ✅ prod | backend base URL the frontend calls |
 | `FRONTEND_ORIGIN` | host `.env` | ✅ prod | CORS allow-list |
 | `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_SENDER_NAME` | host `.env`, GH secret | optional | transactional email alerts |
 | `RESEND_API_KEY` | — | not used yet | reserved placeholder, no code reads it today |
