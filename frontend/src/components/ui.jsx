@@ -106,3 +106,71 @@ export function ErrorBanner({ children }) {
 export function Skeleton({ className, style }) {
   return <span className={cx('skeleton', className)} style={style} />;
 }
+
+/** Page title block used at the top of every workspace. */
+export function PageHeader({ step, title, description, actions }) {
+  return (
+    <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        {step && <Kicker>{step}</Kicker>}
+        <h1 className="text-2xl font-bold tracking-tight text-ink">{title}</h1>
+        {description && <p className="mt-1 max-w-3xl text-sm text-subtle">{description}</p>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </header>
+  );
+}
+
+export function StatCard({ label, value, hint, accent = '#0d6efd', icon: Icon, onClick }) {
+  const Tag = onClick ? 'button' : 'div';
+  return (
+    <Tag
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className={cx(
+        'flex animate-fade-up items-start gap-3 rounded-xl border border-line bg-white p-4 text-left shadow-sm transition',
+        onClick && 'hover:-translate-y-0.5 hover:shadow-md',
+      )}
+    >
+      {Icon && (
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-lg" style={{ background: `${accent}1f`, color: accent }}>
+          <Icon />
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className="block text-2xl font-bold tabular-nums text-ink">{value}</span>
+        <span className="block text-xs font-medium uppercase tracking-wider text-subtle">{label}</span>
+        {hint && <span className="mt-0.5 block text-xs text-faint">{hint}</span>}
+      </span>
+    </Tag>
+  );
+}
+
+/** Horizontal bar 0–1 with a label and percentage. */
+export function Meter({ label, value, color, suffix }) {
+  const v = Math.max(0, Math.min(1, Number(value) || 0));
+  return (
+    <div>
+      <div className="mb-1 flex justify-between gap-2 text-xs">
+        <span className="text-subtle">{label}</span>
+        <span className="font-semibold tabular-nums text-ink">{suffix ?? `${Math.round(v * 100)}%`}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-line-light">
+        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${v * 100}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
+
+/** Inline success / error line that fades in. */
+export function Notice({ tone = 'success', children }) {
+  if (!children) return null;
+  const cls = { success: 'bg-success-light text-success-dark', danger: 'bg-danger-light text-danger-dark', info: 'bg-primary-light text-primary-dark', warning: 'bg-warning-light text-warning-dark' }[tone];
+  return <p role="status" className={cx('animate-scale-in rounded-md px-3 py-2 text-xs', cls)}>{children}</p>;
+}
+
+export const selectCls =
+  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-ink focus:border-primary focus:shadow-focus focus:outline-none';
+
+export const th = 'sticky top-0 z-10 bg-canvas px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle';
+export const td = 'px-3 py-2 align-middle';

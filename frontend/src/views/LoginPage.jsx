@@ -25,7 +25,7 @@ export default function LoginPage() {
         setMode('signin');
       } else {
         await signIn(email, password);
-        navigate('/officer');
+        navigate('/');
       }
     } catch (err) {
       setMsg({ ok: false, text: err.message ?? 'Something went wrong' });
@@ -35,12 +35,12 @@ export default function LoginPage() {
   };
 
   return (
-    <PageMotion className="flex min-h-[calc(100vh-92px)] items-center justify-center px-4 py-10">
+    <PageMotion className="flex min-h-[calc(100vh-56px)] items-center justify-center px-4 py-10">
       <form onSubmit={submit} className="glass flex w-full max-w-sm flex-col gap-4 p-6">
         <div className="flex items-center gap-2">
           <span className="inline-flex size-9 items-center justify-center rounded-lg bg-primary/12 text-primary"><MdSatellite /></span>
           <div>
-            <h1 className="text-lg font-bold">GVMC · NAKSHA</h1>
+            <h1 className="text-lg font-bold">NAKSHA GeoIntegrate</h1>
             <p className="text-xs text-subtle">{mode === 'signin' ? 'Sign in to your workspace' : 'Create an account'}</p>
           </div>
         </div>

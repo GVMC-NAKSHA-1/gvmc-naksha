@@ -4,6 +4,11 @@ import { PG } from '../infra/infra.module';
 import { q, one } from '../infra/pg.provider';
 import { R2 } from '../infra/r2.client';
 import { Queue } from '../infra/queue.client';
+import { classifyReadiness, summarizeReadiness } from './readiness';
+
+// A ward holds a few thousand golden records; "all wards" is capped so one request cannot pull
+// the whole city into the browser. Exports (GeoJSON / GeoPackage / OGC paging) are not capped.
+const LIST_LIMIT = 5000;
 
 @Injectable()
 export class HarmonizedService {
@@ -26,7 +31,22 @@ export class HarmonizedService {
              array_length(member_feature_ids, 1) AS member_count, assembled_at
       FROM harmonized_parcels
       WHERE ${where.join(' AND ')}
-      ORDER BY confidence DESC NULLS LAST`, params);
+      ORDER BY confidence DESC NULLS LAST
+      LIMIT ${LIST_LIMIT}`, params);
+  }
+
+  /** Cadastral finalisation readiness: no open conflicts, no open topology issues, confidence ≥ 0.85. */
+  async readiness(wardId?: string) {
+    const rows = await q(this.pg, `
+      SELECT h.id, h.ward_id, h.confidence, h.conflict_count,
+             (SELECT count(*)::int FROM topology_issues t
+               WHERE t.status = 'open' AND t.feature_ids && h.member_feature_ids) AS topology_open
+      FROM harmonized_parcels h ${wardId ? 'WHERE h.ward_id = $1' : ''}`, wardId ? [wardId] : []);
+    // The summary counts every record; the drill-down list is capped, blocked records first.
+    const parcels = rows.map((r: any) => ({ id: r.id, ward_id: r.ward_id, confidence: r.confidence, conflict_count: r.conflict_count,
+                                            topology_open: r.topology_open, readiness: classifyReadiness(r) }));
+    parcels.sort((a: any, b: any) => Number(a.readiness === 'ready') - Number(b.readiness === 'ready'));
+    return { ...summarizeReadiness(rows), parcels: parcels.slice(0, LIST_LIMIT) };
   }
 
   async detail(id: string) {

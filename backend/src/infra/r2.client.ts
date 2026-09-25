@@ -18,12 +18,25 @@ export class R2 {
     },
   });
   private readonly bucket = process.env.R2_BUCKET_NAME!;
+  // Presigned URLs are opened by the browser. With a local MinIO the API reaches the store at an
+  // internal hostname (http://minio:9000) the browser can't resolve, so sign against the public one.
+  private readonly signer = process.env.R2_PUBLIC_ENDPOINT
+    ? new S3Client({
+        region: 'auto',
+        endpoint: process.env.R2_PUBLIC_ENDPOINT,
+        forcePathStyle: true,
+        credentials: {
+          accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+        },
+      })
+    : this.s3;
 
   presignPut(key: string, contentType: string, expiresIn = 300) {
-    return getSignedUrl(this.s3, new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: contentType }), { expiresIn });
+    return getSignedUrl(this.signer, new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: contentType }), { expiresIn });
   }
   presignGet(key: string, expiresIn = 3600) {
-    return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: this.bucket, Key: key }), { expiresIn });
+    return getSignedUrl(this.signer, new GetObjectCommand({ Bucket: this.bucket, Key: key }), { expiresIn });
   }
   async putObject(key: string, body: Buffer | string, contentType = 'application/octet-stream') {
     await this.s3.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }));

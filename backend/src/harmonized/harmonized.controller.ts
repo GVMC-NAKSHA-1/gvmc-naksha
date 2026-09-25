@@ -50,6 +50,11 @@ export class HarmonizedController {
     return this.svc.exportGeojson(wardId);
   }
 
+  @Get('readiness')
+  readiness(@Query('wardId') wardId?: string) {
+    return this.svc.readiness(wardId);
+  }
+
   @Get(':id')
   get(@Param('id') id: string) {
     return this.svc.detail(id);

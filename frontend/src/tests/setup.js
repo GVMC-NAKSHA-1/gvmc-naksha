@@ -16,6 +16,11 @@ vi.mock('maplibre-gl', () => {
     addSource() {}
     addLayer() {}
     setLayoutProperty() {}
+    setPaintProperty() {}
+    moveLayer() {}
+    removeLayer() {}
+    removeSource() {}
+    getLayer() { return undefined; }
     setFilter() {}
     setFeatureState() {}
     removeFeatureState() {}

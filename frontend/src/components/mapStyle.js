@@ -1,4 +1,4 @@
-// MapLibre style: free raster basemaps + the app's overlay sources and layers.
+// MapLibre style: free raster basemaps + a builder for the app's GeoJSON overlay layers.
 
 export const VIZAG = [83.2185, 17.6869];
 export const EMPTY_FC = { type: 'FeatureCollection', features: [] };
@@ -37,78 +37,74 @@ export const BASE_STYLE = {
   ],
 };
 
-// NDBI Δ → colour as a MapLibre expression (mirrors utils/format.ndbiColor).
-const ndbiExpr = (prop) => [
-  'case',
-  ['==', ['get', prop], null], '#ecf0f1',
-  ['>=', ['get', prop], 0.3], '#c0392b',
-  ['>=', ['get', prop], 0.2], '#e67e22',
-  ['>=', ['get', prop], 0.1], '#f1c40f',
-  ['>', ['get', prop], 0], '#f9e79f',
-  '#ecf0f1',
-];
+const POLYGONS = ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]];
+const LINES = ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']]];
+const POINTS = ['in', ['geometry-type'], ['literal', ['Point', 'MultiPoint']]];
 
-// Metres → pixels at Visakhapatnam's latitude, exact at every zoom (Web Mercator).
-const MPP_Z0 = 156543.03392 * Math.cos((VIZAG[1] * Math.PI) / 180);
-// `zoom` must be the top-level input, so the minimum pixel size is applied per stop.
-const metresToPx = (prop, minPx) => [
-  'interpolate', ['exponential', 2], ['zoom'],
-  0, ['max', minPx, ['/', ['get', prop], MPP_Z0]],
-  22, ['max', minPx, ['/', ['get', prop], MPP_Z0 / 2 ** 22]],
-];
+/** A feature may override its layer colour with a `_color` property. */
+const colorOf = (color) => ['coalesce', ['get', '_color'], color];
 
-export const OVERLAY_SOURCES = {
-  'wards': { type: 'geojson', data: EMPTY_FC, promoteId: 'wardId' },
-  'selected-ward': { type: 'geojson', data: EMPTY_FC },
-  'changes': { type: 'geojson', data: EMPTY_FC, promoteId: 'fid' },
-  'properties': { type: 'geojson', data: EMPTY_FC, promoteId: 'id' },
-};
+/**
+ * Style layers for one overlay: polygon fill, outline/line, and circles for points — all fed by a
+ * single GeoJSON source named `layer.id`.
+ */
+export function overlaySpecs(layer) {
+  const color = layer.color ?? '#0d6efd';
+  const visibility = layer.visible === false ? 'none' : 'visible';
+  const line = {
+    id: `${layer.id}-line`, type: 'line', source: layer.id, filter: LINES,
+    layout: { visibility, 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': colorOf(color),
+      'line-width': layer.lineWidth ?? 1.5,
+      'line-opacity': layer.lineOpacity ?? 0.9,
+    },
+  };
+  if (layer.dashed) line.paint['line-dasharray'] = [2, 1.5];
+  return [
+    {
+      id: `${layer.id}-fill`, type: 'fill', source: layer.id, filter: POLYGONS,
+      layout: { visibility },
+      paint: { 'fill-color': colorOf(color), 'fill-opacity': layer.fillOpacity ?? 0.22 },
+    },
+    line,
+    {
+      id: `${layer.id}-circle`, type: 'circle', source: layer.id, filter: POINTS,
+      layout: { visibility },
+      paint: {
+        'circle-color': colorOf(color),
+        'circle-radius': ['coalesce', ['get', '_radius'], layer.circleRadius ?? 5],
+        'circle-opacity': layer.circleOpacity ?? 0.85,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1.2,
+      },
+    },
+  ];
+}
 
-export const OVERLAY_LAYERS = [
-  { id: 'wards-fill', type: 'fill', source: 'wards', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.35 } },
-  { id: 'wards-line', type: 'line', source: 'wards', paint: { 'line-color': ['get', 'color'], 'line-opacity': 0.6, 'line-width': 1 } },
-  {
-    id: 'wards-label', type: 'symbol', source: 'wards',
-    layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-font': ['Open Sans Semibold'] },
-    paint: { 'text-color': '#212529', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
-  },
-  {
-    id: 'selected-ward-line', type: 'line', source: 'selected-ward',
-    paint: { 'line-color': '#0d6efd', 'line-width': 2, 'line-dasharray': [2, 1.5] },
-  },
-  {
-    id: 'changes-fill', type: 'fill', source: 'changes', layout: { visibility: 'none' },
-    paint: {
-      'fill-color': ['get', 'color'],
-      'fill-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.85, ['get', 'opacity']],
-    },
-  },
-  {
-    id: 'changes-line', type: 'line', source: 'changes', layout: { visibility: 'none' },
-    paint: {
-      'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#ffffff', ['get', 'color']],
-      'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 3, 2],
-    },
-  },
-  {
-    id: 'properties-circle', type: 'circle', source: 'properties',
-    paint: {
-      'circle-radius': metresToPx('radiusM', 4),
-      'circle-color': ndbiExpr('ndbiDelta'),
-      'circle-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.9, 0.65],
-      'circle-stroke-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#0d6efd', '#ffffff'],
-      'circle-stroke-width': ['case', ['boolean', ['feature-state', 'selected'], false], 2.5, 1],
-    },
-  },
-  {
-    id: 'properties-selected', type: 'circle', source: 'properties',
-    filter: ['==', ['get', 'id'], ''],
-    paint: {
-      'circle-radius': metresToPx('radiusM', 6),
-      'circle-color': ndbiExpr('ndbiDelta'),
-      'circle-opacity': 0.9,
-      'circle-stroke-color': '#0d6efd',
-      'circle-stroke-width': 2.5,
-    },
-  },
-];
+/** [west, south, east, north] of any GeoJSON object, or null when it has no coordinates. */
+export function bboxOf(geojson) {
+  let w = Infinity; let s = Infinity; let e = -Infinity; let n = -Infinity;
+  const walk = (c) => {
+    if (!Array.isArray(c)) return;
+    if (typeof c[0] === 'number') {
+      w = Math.min(w, c[0]); e = Math.max(e, c[0]); s = Math.min(s, c[1]); n = Math.max(n, c[1]);
+    } else c.forEach(walk);
+  };
+  const visit = (g) => {
+    if (!g) return;
+    if (g.type === 'FeatureCollection') g.features.forEach(visit);
+    else if (g.type === 'Feature') visit(g.geometry);
+    else if (g.type === 'GeometryCollection') g.geometries.forEach(visit);
+    else walk(g.coordinates);
+  };
+  visit(geojson);
+  return Number.isFinite(w) ? [w, s, e, n] : null;
+}
+
+export const bboxPolygon = ({ north, south, east, west }) => ({
+  type: 'Polygon',
+  coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
+});
+
+export const featureCollection = (features) => ({ type: 'FeatureCollection', features });

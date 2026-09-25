@@ -8,27 +8,32 @@ export const mapAPIToUI = (c) => ({
   conflictType: c.conflict_type,
   severity: c.severity ?? 'low',
   detail: c.detail ?? {},
+  disagreeingFields: c.detail?.disagreeing_fields ?? [],
+  iou: c.detail?.iou ?? null,
   suggestedResolution: c.suggested_resolution ?? '',
   status: c.status ?? 'pending',
+  notes: c.notes ?? '',
   resolvedBy: c.resolved_by ?? null,
   resolvedAt: c.resolved_at ?? null,
+  createdAt: c.created_at ?? null,
 });
 
-export const fetchConflicts = createAsyncThunk('conflicts/fetchConflicts', async ({ wardId, status } = {}, { rejectWithValue }) => {
+export const fetchConflicts = createAsyncThunk('conflicts/fetchConflicts', async ({ wardId, status, severity } = {}, { rejectWithValue }) => {
   try {
-    const { data } = await api.get('/api/conflicts', { params: cleanParams({ wardId, status }) });
+    const { data } = await api.get('/api/conflicts', { params: cleanParams({ wardId, status, severity }) });
     return asList(data, 'conflicts').map(mapAPIToUI);
   } catch (err) {
     return rejectWithValue(errorMessage(err));
   }
 });
 
+/** status: resolved | needs_review | rejected */
 export const resolveConflict = createAsyncThunk(
   'conflicts/resolveConflict',
-  async ({ id, status = 'resolved', notes, resolvedBy = 'officer' }, { rejectWithValue }) => {
+  async ({ id, status = 'resolved', notes, resolvedBy }, { rejectWithValue }) => {
     try {
       await api.post(`/api/conflicts/${id}/resolve`, cleanParams({ status, notes, resolvedBy }));
-      return { id: String(id), status, resolvedBy };
+      return { id: String(id), status, notes, resolvedBy, resolvedAt: new Date().toISOString() };
     } catch (err) {
       return rejectWithValue(errorMessage(err));
     }
@@ -50,7 +55,7 @@ const conflictsSlice = createSlice({
       .addCase(resolveConflict.fulfilled, (s, a) => {
         s.resolveStatus = 'succeeded';
         const c = s.items.find((x) => x.id === a.payload.id);
-        if (c) Object.assign(c, { status: a.payload.status, resolvedBy: a.payload.resolvedBy });
+        if (c) Object.assign(c, { status: a.payload.status, notes: a.payload.notes ?? c.notes, resolvedAt: a.payload.resolvedAt });
       })
       .addCase(resolveConflict.rejected, (s, a) => { s.resolveStatus = 'failed'; s.resolveError = a.payload; });
   },

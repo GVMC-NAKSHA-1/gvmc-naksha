@@ -16,3 +16,7 @@ venv/
 .DS_Store
 *.pem
 .vercel
+
+# open-data pack build output and download cache (rebuild with data/README.md)
+data/out/
+data/cache/

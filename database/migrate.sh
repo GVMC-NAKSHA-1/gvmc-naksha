@@ -37,4 +37,11 @@ else
   echo "[migrate] seed skipped (data already present or SEED=0)"
 fi
 
+# Pipeline demo layers (topology / change detection / validation) — loaded once, also on
+# databases that were seeded before these features existed.
+if [ "${SEED:-1}" = "1" ] && [ -f /seed/demo_pipeline.sql ] &&    [ "$(psql "$DATABASE_URL" -tA -c "SELECT count(*) FROM wards WHERE id='4'")" = "1" ] &&    [ "$(psql "$DATABASE_URL" -tA -c "SELECT count(*) FROM data_sources WHERE id IN ('33333333-3333-4333-8333-333333333333', '33333333-3333-3333-3333-333333333333')")" = "0" ]; then
+  echo "[migrate] loading pipeline demo layers"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -1 -f /seed/demo_pipeline.sql
+fi
+
 echo "[migrate] done"

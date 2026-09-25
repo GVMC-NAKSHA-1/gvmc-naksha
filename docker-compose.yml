@@ -28,6 +28,24 @@ services:
       timeout: 3s
       retries: 20
 
+  # S3-compatible object storage so uploads, AI extraction, geo-referencing and exports work
+  # locally with no Cloudflare account. Console: http://localhost:9001 (minioadmin / minioadmin).
+  # MinIO stopped publishing images (minio/minio and minio/mc are gone from Docker Hub and quay.io),
+  # so this uses Bitnami's frozen build of the same server. It creates the bucket itself.
+  minio:
+    image: bitnamilegacy/minio:2025.7.23
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_DEFAULT_BUCKETS: gvmc-data
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["gvmc_minio:/bitnami/minio/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:9000/minio/health/live"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
   # Applies database/migrations/*.sql (idempotently) then seeds once. Runs on every `up`.
   migrate:
     image: postgis/postgis:16-3.4      # reused for its psql client
@@ -54,10 +72,18 @@ services:
       PROFILES_SOURCE: ${PROFILES_SOURCE:-local}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3001}
       PORT: "3000"
+      # Local MinIO unless real R2 keys are set in .env. R2_PUBLIC_ENDPOINT is what presigned URLs
+      # use — the browser can't resolve the internal `minio` hostname.
+      R2_ENDPOINT: ${R2_ENDPOINT:-http://minio:9000}
+      R2_PUBLIC_ENDPOINT: ${R2_PUBLIC_ENDPOINT:-http://localhost:9000}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-minioadmin}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-minioadmin}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-gvmc-data}
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
+      minio: { condition: service_healthy }
     ports: ["3000:3000"]
 
   worker:
@@ -67,10 +93,42 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgres://gvmc:dev@db:5432/gvmcdb}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       PYTHONUNBUFFERED: "1"
+      # Optional ONNX building-segmentation model for AI extraction (mount it and set the path).
+      FOOTPRINT_MODEL_PATH: ${FOOTPRINT_MODEL_PATH:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-http://minio:9000}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-minioadmin}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-minioadmin}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-gvmc-data}
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
 
+
+  # Open-data pack builder / loader (data/README.md). Not started by `up`; run it on demand:
+  #   docker compose --profile data run --rm data all
+  # Reuses the worker image (same geo libraries), with data/ mounted.
+  data:
+    build: ./worker
+    profiles: ["data"]
+    working_dir: /app/data
+    entrypoint: ["python", "-m", "naksha_data"]
+    command: ["--help"]
+    volumes: ["./data:/app/data"]
+    environment:
+      DATA_OUT: /app/data/out
+      DATA_CACHE: /app/data/cache
+      API_URL: http://api:3000
+      API_TOKEN: ${API_TOKEN:-}
+      DATABASE_URL: ${DATABASE_URL:-postgres://gvmc:dev@db:5432/gvmcdb}
+      R2_ENDPOINT: ${R2_ENDPOINT:-http://minio:9000}
+      R2_PUBLIC_ENDPOINT: ${R2_PUBLIC_ENDPOINT:-http://localhost:9000}
+      STORAGE_INTERNAL_ENDPOINT: ${STORAGE_INTERNAL_ENDPOINT:-http://minio:9000}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-minioadmin}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-minioadmin}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-gvmc-data}
+      NAKSHA_BUILDINGS: ${NAKSHA_BUILDINGS:-microsoft}
+
 volumes:
   gvmc_pgdata:
+  gvmc_minio:

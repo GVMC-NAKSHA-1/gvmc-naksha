@@ -4,7 +4,9 @@ import { R2 } from './r2.client';
 import { Queue } from './queue.client';
 import { Brevo } from './email.client';
 
-export const PG = 'PG_POOL';
+import { PG_POOL } from './tokens';
+
+export const PG = PG_POOL;
 
 @Global()
 @Module({

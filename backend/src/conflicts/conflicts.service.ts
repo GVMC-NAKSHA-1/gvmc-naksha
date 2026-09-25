@@ -15,7 +15,8 @@ export class ConflictsService {
       if (val) { params.push(val); where.push(`${col} = $${params.length}`); }
     return q(this.pg, `SELECT * FROM conflicts ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
                        ORDER BY array_position(ARRAY['critical','high','medium','low']::text[], severity::text),
-                                created_at DESC`, params);
+                                created_at DESC
+                       LIMIT 5000`, params);
   }
 
   async get(id: string) {

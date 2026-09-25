@@ -8,8 +8,8 @@ import Loader from './Loader';
 describe('AppSplash', () => {
   it('shows the brand and loading hint', () => {
     render(<AppSplash />);
-    expect(screen.getByText('GVMC Detection')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Preparing satellite intelligence…');
+    expect(screen.getByText('NAKSHA GeoIntegrate')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading geospatial workspace…');
   });
 });
 

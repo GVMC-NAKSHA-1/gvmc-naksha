@@ -1,129 +1,264 @@
-// In-browser demo dataset for VITE_MOCK=true. Shapes follow the NestJS backend responses.
+// In-browser demo dataset for VITE_MOCK=true. Shapes follow the NestJS backend responses, and
+// matches / conflicts / golden records are derived with the same rules as the Python worker.
 
 export const WARDS = [
-  { id: '1', name: 'Seethammadhara', bbox: { north: 17.745, south: 17.715, east: 83.315, west: 83.28 } },
-  { id: '2', name: 'Gopalapatnam', bbox: { north: 17.778, south: 17.748, east: 83.278, west: 83.245 } },
-  { id: '3', name: 'Maddilapalem', bbox: { north: 17.742, south: 17.722, east: 83.335, west: 83.312 } },
-  { id: '4', name: 'Asilmetta', bbox: { north: 17.728, south: 17.71, east: 83.322, west: 83.3 } },
-  { id: '5', name: 'Dwaraka Nagar', bbox: { north: 17.735, south: 17.715, east: 83.305, west: 83.285 } },
+  { id: '1', name: 'Seethammadhara', bbox: { north: 17.745, south: 17.73, east: 83.31, west: 83.293 } },
+  { id: '2', name: 'Gopalapatnam', bbox: { north: 17.76, south: 17.745, east: 83.212, west: 83.195 } },
+  { id: '3', name: 'Maddilapalem', bbox: { north: 17.738, south: 17.725, east: 83.325, west: 83.312 } },
+  { id: '4', name: 'Asilmetta', bbox: { north: 17.725, south: 17.713, east: 83.318, west: 83.305 } },
+  { id: '5', name: 'Dwaraka Nagar', bbox: { north: 17.73, south: 17.718, east: 83.3, west: 83.287 } },
 ];
 
-// Deterministic pseudo-random so the demo looks the same each load.
-let seed = 42;
+// Deterministic pseudo-random so the demo is identical on every load.
+let seed = 7;
 const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-const jitter = (v, amt = 0.15) => Math.max(0, Math.min(1, v + (rand() - 0.5) * 2 * amt));
+const pick = (xs) => xs[Math.floor(rand() * xs.length)];
+const round = (v, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
 
-const EXPLAIN = (p) => `**${p.detection_type === 'new_build' ? 'New construction' : 'Change of use'} detected** with ${Math.round(p.confidence * 100)}% confidence.
+const M_LAT = 1 / 110574;                       // degrees per metre
+const M_LON = 1 / (111320 * Math.cos((17.73 * Math.PI) / 180));
+const rect = (lon, lat, wM, hM) => [[
+  [lon, lat], [lon + wM * M_LON, lat], [lon + wM * M_LON, lat + hM * M_LAT], [lon, lat + hM * M_LAT], [lon, lat],
+]];
+const centroid = (ring) => {
+  const pts = ring[0].slice(0, -1);
+  return [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
+};
 
-- NDBI rose by **${p.confidence_breakdown.ndbi_delta.toFixed(2)}** between ${p.baseline_year} and ${p.comparison_year}, indicating new built-up surface.
-- Footprint of ~${Math.round(p.area_sqm)} m² is ${p.confidence_breakdown.db_match < 0.5 ? '**not** matched' : 'partially matched'} to the GVMC assessment register.
-- Vegetation loss signal: ${Math.round(p.confidence_breakdown.ndvi_drop * 100)}%.
+const OWNERS = ['K. Srinivasa Rao', 'P. Lakshmi', 'M. Venkata Ramana', 'G. Anitha', 'B. Suresh Kumar', 'Ch. Padma', 'V. Ravi Teja', 'S. Durga Prasad', 'T. Madhavi', 'N. Appala Naidu', 'R. Sailaja', 'D. Ganesh'];
+const LAND_USE = ['residential', 'residential', 'residential', 'commercial', 'mixed_use', 'institutional'];
 
-**Recommended:** field verification and reassessment of property tax.`;
+export const RELIABILITY = {
+  gnss_cors: 1.0, cadastral: 0.95, ground_truth: 0.9, building_footprint: 0.8,
+  municipal_gis: 0.8, utility: 0.75, ori: 0.7, dsm_dtm: 0.7, revenue: 0.65, drone_imagery: 0.6,
+};
 
-function makeProperty(n, wardId, lat, lng, type, conf, status, areaSqm, cmpYear = 2024) {
-  const confidence_breakdown = {
-    ndbi_delta: +jitter(conf * 0.4, 0.08).toFixed(3),
-    area_delta: +jitter(conf).toFixed(3),
-    osm_status: +jitter(conf * 0.9).toFixed(3),
-    ndvi_drop: +jitter(conf * 0.8).toFixed(3),
-    db_match: +jitter(1 - conf * 0.6).toFixed(3),
-  };
-  const p = {
-    id: `${String(n).padStart(8, '0')}-4e1a-4c2b-9d3f-${String(1000 + n).padStart(12, '0')}`,
-    ward_id: wardId,
-    ward_name: WARDS.find((w) => w.id === wardId)?.name,
-    lat, lng, area_sqm: areaSqm,
-    detection_type: type,
-    confidence: conf,
-    confidence_breakdown,
-    ndbi_delta: confidence_breakdown.ndbi_delta,
-    detected_at: new Date(Date.now() - n * 36e5 * 7).toISOString(),
-    status,
-    baseline_year: 2022,
-    comparison_year: cmpYear,
-    ai_explanation: null,
-  };
-  if (status !== 'pending') p.ai_explanation = EXPLAIN(p);
-  return p;
+const now = Date.now();
+const daysAgo = (d) => new Date(now - d * 864e5).toISOString();
+
+export const SOURCES = [];
+export const FEATURES = {};   // sourceId -> Feature[]
+export const MATCHES = [];
+export const CONFLICTS = [];
+export const HARMONIZED = [];
+export const MAPPINGS = [];
+
+let fid = 0;
+const nextId = (p) => `${p}-${String(++fid).padStart(5, '0')}`;
+
+function addSource(wardId, type, name, features, extra = {}) {
+  const id = `src-${wardId}-${type}${extra.suffix ?? ''}`;
+  const fields = [...new Set(features.flatMap((f) => Object.keys(f.properties).filter((k) => !k.startsWith('_'))))];
+  SOURCES.push({
+    id, type, ward_id: wardId, original_name: name, status: extra.status ?? 'ready', crs: extra.crs ?? 'EPSG:4326',
+    captured_at: extra.captured ?? daysAgo(30 + Math.floor(rand() * 300)), scanned: Boolean(extra.scanned),
+    created_at: daysAgo(Math.floor(rand() * 20)), error: extra.error ?? null,
+    metadata: { ...(extra.metadata ?? {}), ...(features.length ? { fields, feature_count: features.length } : {}) },
+  });
+  FEATURES[id] = features;
+  return id;
 }
 
-const STATUSES = ['pending', 'pending', 'pending', 'verified', 'underassessed', 'false_positive', 'already_assessed'];
-const counts = { 1: 9, 2: 7, 3: 6, 4: 5, 5: 5 };
-let n = 0;
-export const PROPERTIES = WARDS.flatMap((w) => Array.from({ length: counts[w.id] }, () => {
-  n += 1;
+function confidence(score, a, b) {
+  const geometric = score / 100;
+  const reliability = (RELIABILITY[a] + RELIABILITY[b]) / 2;
+  return {
+    geometric_match_score: round(geometric, 4), attribute_match_score: 0.5,
+    source_reliability_weight: round(reliability, 4), recency_score: 1,
+  };
+}
+
+function addMatch(wardId, fa, fb, ta, tb, iou, dist) {
+  const score = round(100 * (iou != null ? iou : Math.max(0, 1 - dist / 25)), 2);
+  const m = {
+    id: nextId('m'), ward_id: wardId, feature_a_id: fa.id, feature_b_id: fb.id, source_a_type: ta, source_b_type: tb,
+    geometry_iou: iou != null ? round(iou, 4) : null, centroid_distance_m: dist != null ? round(dist, 2) : null,
+    match_score: score, confidence_breakdown: confidence(score, ta, tb), matched_at: daysAgo(1),
+  };
+  MATCHES.push(m);
+  return m;
+}
+
+// worker/src/harmonize/conflicts.py
+function severity(score, ratio, geomBad) {
+  if (score < 40 || geomBad) return 'critical';
+  if (score < 70) return 'high';
+  if (score < 90 || ratio > 0.34) return 'medium';
+  return 'low';
+}
+function detectConflict(m, a, b) {
+  const shared = Object.keys(a).filter((k) => k in b && !k.startsWith('_'));
+  const disagree = shared.filter((k) => String(a[k]).trim().toLowerCase() !== String(b[k]).trim().toLowerCase());
+  const geomBad = m.geometry_iou != null && m.geometry_iou < 0.3;
+  if (!disagree.length && !geomBad) return;
+  CONFLICTS.push({
+    id: nextId('c'), ward_id: m.ward_id, match_id: m.id,
+    conflict_type: disagree.length && geomBad ? 'both' : disagree.length ? 'attribute_mismatch' : 'geometry_mismatch',
+    severity: severity(m.match_score, disagree.length / Math.max(shared.length, 1), geomBad),
+    detail: { disagreeing_fields: disagree, iou: m.geometry_iou },
+    suggested_resolution: `Reconcile ${disagree.join(', ') || 'geometry'}; trust the higher-reliability source.`,
+    status: 'pending', created_at: daysAgo(rand() * 3),
+  });
+}
+
+for (const w of WARDS) {
   const { north, south, east, west } = w.bbox;
-  const lat = +(south + (north - south) * (0.15 + rand() * 0.7)).toFixed(6);
-  const lng = +(west + (east - west) * (0.15 + rand() * 0.7)).toFixed(6);
-  const type = rand() > 0.4 ? 'new_build' : 'change_of_use';
-  const conf = +(0.45 + rand() * 0.52).toFixed(2);
-  return makeProperty(n, w.id, lat, lng, type, conf, STATUSES[n % STATUSES.length], Math.round(60 + rand() * 540));
-}));
+  const originLon = west + (east - west) * 0.18;
+  const originLat = south + (north - south) * 0.22;
+  const cad = []; const mun = []; const bld = []; const rev = []; const gt = [];
+  const n = 12;
+  for (let i = 0; i < n; i++) {
+    const col = i % 4; const row = Math.floor(i / 4);
+    const lon = originLon + col * 46 * M_LON;
+    const lat = originLat + row * 40 * M_LAT;
+    const wM = 34 + rand() * 6; const hM = 28 + rand() * 5;
+    const owner = OWNERS[(i + Number(w.id)) % OWNERS.length];
+    const survey = `${100 + Number(w.id) * 10 + i}/${pick(['1', '2A', '3B', '4'])}`;
+    const khata = `${Number(w.id) * 1000 + 41 + i}`;
+    const use = LAND_USE[(i * 5 + Number(w.id)) % LAND_USE.length];
+    const area = Math.round(wM * hM);
+    const cadGeom = { type: 'Polygon', coordinates: rect(lon, lat, wM, hM) };
+    cad.push({ type: 'Feature', id: nextId('f'), geometry: cadGeom, properties: {
+      parcel_id: `W${w.id}-P${String(i + 1).padStart(2, '0')}`, survey_no: survey, khata_no: khata, owner_name: owner, land_use: use, area_sqm: area,
+      ...(i % 5 === 2 ? { _was_invalid: true } : {}),
+    } });
 
-export const ALERTS = WARDS.flatMap((w, i) => [
-  { id: `al-${w.id}-1`, ward_id: w.id, severity: 'danger', text: `${counts[w.id]} new structures detected in ${w.name} this week — 2.1× the monthly baseline.`, created_at: new Date(Date.now() - (2 + i) * 36e5).toISOString() },
-  { id: `al-${w.id}-2`, ward_id: w.id, severity: 'warning', text: `Cluster of change-of-use detections near the main road in ${w.name}; likely commercial conversions.`, created_at: new Date(Date.now() - (20 + i) * 36e5).toISOString() },
-  ...(i % 2 === 0 ? [{ id: `al-${w.id}-3`, ward_id: w.id, severity: 'info', text: `Sentinel-2 composite for ${w.name} refreshed (cloud cover 4%).`, created_at: new Date(Date.now() - 3 * 864e5).toISOString() }] : []),
-]);
+    // Municipal GIS: same parcels digitised separately — small shifts, occasional disagreements.
+    const bad = i === 7;                                  // grossly misplaced parcel → geometry conflict
+    const shiftM = bad ? 26 : 0.8 + rand() * 3.2;
+    const munOwner = i === 3 || i === 10 ? `${owner.split(' ').slice(-1)[0]} (heirs)` : owner;
+    const munUse = i === 5 ? 'commercial' : use;
+    mun.push({ type: 'Feature', id: nextId('f'), geometry: { type: 'Polygon', coordinates: rect(lon + shiftM * M_LON, lat + shiftM * 0.6 * M_LAT, wM * (0.96 + rand() * 0.08), hM) }, properties: {
+      parcel_id: `W${w.id}-P${String(i + 1).padStart(2, '0')}`, survey_no: survey, owner_name: munOwner, land_use: munUse, property_tax_id: `GVMC/${w.id}/${3200 + i}`,
+    } });
 
-export const TICKETS = [
-  { id: 'tk-0001', ward_id: '1', property_id: PROPERTIES[0].id, house_number: '12-4-56/A', description: 'G+2 structure built on previously vacant plot. No building permission displayed on site.', tax_pending: 25000, status: 'open', supervisor_notes: '', created_at: new Date(Date.now() - 864e5).toISOString() },
-  { id: 'tk-0002', ward_id: '2', property_id: PROPERTIES[10].id, house_number: '8-2-110', description: 'Ground floor converted to a retail shop; assessed as residential.', tax_pending: 14200, status: 'under_review', supervisor_notes: 'Revenue inspector to visit on Monday.', created_at: new Date(Date.now() - 3 * 864e5).toISOString() },
-  { id: 'tk-0003', ward_id: '3', property_id: null, house_number: '47-11-3', description: 'Additional floor added over the existing structure.', tax_pending: 9800, status: 'resolved', supervisor_notes: 'Reassessed. Notice issued.', created_at: new Date(Date.now() - 9 * 864e5).toISOString() },
-  { id: 'tk-0004', ward_id: '1', property_id: PROPERTIES[3].id, house_number: '12-6-21', description: 'Warehouse shed on agricultural land.', tax_pending: null, status: 'open', supervisor_notes: '', created_at: new Date(Date.now() - 2 * 36e5).toISOString() },
-];
+    if (i % 6 !== 4) {
+      const inset = 4 + rand() * 3;
+      bld.push({ type: 'Feature', id: nextId('f'), geometry: { type: 'Polygon', coordinates: rect(lon + inset * M_LON, lat + inset * M_LAT, wM - 2 * inset - rand() * 6, hM - 2 * inset - rand() * 4) }, properties: {
+        bldg_id: `B-${w.id}-${i + 1}`, floors: 1 + Math.floor(rand() * 4), height_m: round(3.2 + rand() * 10, 1),
+      } });
+    }
+    const c = centroid(cadGeom.coordinates);
+    rev.push({ type: 'Feature', id: nextId('f'), geometry: { type: 'Point', coordinates: [c[0] + (rand() - 0.5) * 8 * M_LON, c[1] + (rand() - 0.5) * 8 * M_LAT] }, properties: {
+      khata_number: khata, owner: owner.toUpperCase(), extent_sqyd: Math.round(area * 1.196), mutation_year: 2014 + Math.floor(rand() * 10),
+    } });
+    if (i % 2 === 0) {
+      gt.push({ type: 'Feature', id: nextId('f'), geometry: { type: 'Point', coordinates: [c[0] + (rand() - 0.5) * 16 * M_LON, c[1] + (rand() - 0.5) * 16 * M_LAT] }, properties: {
+        name: `GT-${w.id}-${i + 1}`, ele: round(18 + rand() * 30, 1), surveyor: pick(['Team A', 'Team B']),
+      } });
+    }
+  }
 
-export const SOURCES = [
-  { id: 'src-01', type: 'cadastral', ward_id: '1', original_name: 'seethammadhara_cadastral.geojson', status: 'ready', crs: 'EPSG:4326', metadata: { feature_count: 1432 } },
-  { id: 'src-02', type: 'revenue', ward_id: '1', original_name: 'revenue_records_2024.pdf', status: 'pending_ocr', crs: null, metadata: {} },
-  { id: 'src-03', type: 'municipal_gis', ward_id: '2', original_name: 'gvmc_parcels_w2.geojson', status: 'ready', crs: 'EPSG:4326', metadata: { feature_count: 988 } },
-  { id: 'src-04', type: 'drone_imagery', ward_id: '1', original_name: 'drone_ortho_2026_03.tif', status: 'processing', crs: 'EPSG:32644', metadata: {} },
-  { id: 'src-05', type: 'ground_truth', ward_id: '3', original_name: 'field_survey_march.gpx', status: 'ready', crs: 'EPSG:4326', metadata: {} },
-  { id: 'src-06', type: 'building_footprint', ward_id: null, original_name: 'footprints_vizag.geojson', status: 'ready', crs: 'EPSG:4326', metadata: { feature_count: 21044 } },
-  { id: 'src-07', type: 'utility', ward_id: '4', original_name: 'water_connections.geojson', status: 'failed', crs: null, metadata: { error: 'Invalid geometry at feature 118' } },
-  { id: 'src-08', type: 'revenue', ward_id: '5', original_name: 'khata_scan_0042.pdf', status: 'ready', crs: null,
-    metadata: { ocr_extracted: { khata_no: { value: '1142/B', confidence: 91 }, owner_name: { value: 'K. Srinivasa Rao', confidence: 84 }, area: { value: '212 sq.yd', confidence: 77 } } } },
-];
+  const bboxPoly = (padM = 0) => ({ type: 'Polygon', coordinates: [[
+    [west - padM * M_LON, south - padM * M_LAT], [east + padM * M_LON, south - padM * M_LAT],
+    [east + padM * M_LON, north + padM * M_LAT], [west - padM * M_LON, north + padM * M_LAT], [west - padM * M_LON, south - padM * M_LAT],
+  ]] });
+  const midLat = originLat + 60 * M_LAT;
+  const utility = [
+    { type: 'Feature', id: nextId('f'), geometry: { type: 'LineString', coordinates: [[originLon - 20 * M_LON, originLat - 6 * M_LAT], [originLon + 200 * M_LON, originLat - 6 * M_LAT]] }, properties: { asset_id: `WM-${w.id}-01`, network: 'water', material: 'DI', diameter_mm: 300 } },
+    { type: 'Feature', id: nextId('f'), geometry: { type: 'LineString', coordinates: [[originLon + 88 * M_LON, originLat - 20 * M_LAT], [originLon + 88 * M_LON, midLat + 80 * M_LAT]] }, properties: { asset_id: `SW-${w.id}-02`, network: 'sewer', material: 'RCC', diameter_mm: 450 } },
+  ];
+  const gnss = [
+    { type: 'Feature', id: nextId('f'), geometry: { type: 'Point', coordinates: [west + (east - west) * 0.08, south + (north - south) * 0.1] }, properties: { station: `CORS-VSP-${w.id}A`, accuracy_cm: 1.2, epoch: '2025.4' } },
+    { type: 'Feature', id: nextId('f'), geometry: { type: 'Point', coordinates: [west + (east - west) * 0.9, south + (north - south) * 0.85] }, properties: { station: `CORS-VSP-${w.id}B`, accuracy_cm: 1.5, epoch: '2025.4' } },
+  ];
 
-export const MATCHES = [
-  { id: 'm-1', ward_id: '1', source_a_type: 'cadastral', source_b_type: 'municipal_gis', geometry_iou: 0.91, centroid_distance_m: 2.3, match_score: 96.1 },
-  { id: 'm-2', ward_id: '1', source_a_type: 'cadastral', source_b_type: 'building_footprint', geometry_iou: 0.84, centroid_distance_m: 4.8, match_score: 88.4 },
-  { id: 'm-3', ward_id: '2', source_a_type: 'municipal_gis', source_b_type: 'revenue', geometry_iou: 0.72, centroid_distance_m: 7.9, match_score: 74.2 },
-  { id: 'm-4', ward_id: '3', source_a_type: 'ground_truth', source_b_type: 'cadastral', geometry_iou: 0.63, centroid_distance_m: 11.2, match_score: 61.7 },
-  { id: 'm-5', ward_id: '1', source_a_type: 'cadastral', source_b_type: 'revenue', geometry_iou: 0.41, centroid_distance_m: 18.5, match_score: 48.9 },
-  { id: 'm-6', ward_id: '4', source_a_type: 'utility', source_b_type: 'municipal_gis', geometry_iou: 0.22, centroid_distance_m: 31.0, match_score: 35.8 },
-];
+  const W = w.id;
+  const cadId = addSource(W, 'cadastral', `ward${W}_cadastral_map.shp`, cad, { crs: 'EPSG:32644', captured: daysAgo(900) });
+  addSource(W, 'municipal_gis', `gvmc_ward${W}_parcels.geojson`, mun, { captured: daysAgo(200) });
+  addSource(W, 'building_footprint', `ward${W}_footprints_survey_2023.geojson`, bld, { captured: '2023-03-15T00:00:00.000Z' });
+  const revId = addSource(W, 'revenue', `ward${W}_revenue_register.csv`, rev, { captured: daysAgo(400) });
+  addSource(W, 'ground_truth', `ward${W}_field_survey.gpx`, gt, { captured: daysAgo(12) });
+  addSource(W, 'gnss_cors', `ward${W}_cors_control.csv`, gnss, { captured: daysAgo(60) });
+  addSource(W, 'utility', `ward${W}_water_sewer.geojson`, W === '4' ? [] : utility, W === '4'
+    ? { status: 'failed', error: 'Invalid geometry at feature 118: LineString has fewer than 2 points', metadata: {} }
+    : { captured: daysAgo(500) });
+  addSource(W, 'ori', `ward${W}_ori_2025_10cm.tif`, [{ type: 'Feature', id: nextId('f'), geometry: bboxPoly(20), properties: { bands: 3, res: '0.10 m', dtype: 'uint8' } }], { crs: 'EPSG:32644', captured: daysAgo(90) });
+  addSource(W, 'drone_imagery', `ward${W}_drone_flight_07.tif`, [{ type: 'Feature', id: nextId('f'), geometry: bboxPoly(-40), properties: { bands: 4, res: '0.05 m', dtype: 'uint16' } }], { crs: 'EPSG:32644', captured: daysAgo(15) });
+  addSource(W, 'dsm_dtm', `ward${W}_dsm_1m.tif`, [{ type: 'Feature', id: nextId('f'), geometry: bboxPoly(10), properties: { bands: 1, res: '1.0 m', dtype: 'float32' } }], { crs: 'EPSG:32644', captured: daysAgo(90) });
+  if (W === '1') {
+    addSource(W, 'revenue', 'khata_scan_0042.pdf', [], {
+      suffix: '-scan', scanned: true, status: 'ready', crs: null,
+      metadata: { ocr: { khata_no: '1142/B', owner_name: 'K. Srinivasa Rao', survey_no: '112/2A', area: '212 sq.yd' }, ocr_confidence: { khata_no: 91, owner_name: 84, survey_no: 79, area: 72 } },
+    });
+  }
+  if (W === '2') addSource(W, 'revenue', 'old_patta_1987.pdf', [], { suffix: '-scan', scanned: true, status: 'pending_ocr', crs: null, metadata: {} });
 
-export const CONFLICTS = [
-  { id: 'c-1', ward_id: '1', match_id: 'm-5', conflict_type: 'geometry_mismatch', severity: 'high', status: 'pending',
-    suggested_resolution: 'Cadastral boundary extends 18 m beyond the revenue record — prefer the drone-verified footprint.' },
-  { id: 'c-2', ward_id: '2', match_id: 'm-3', conflict_type: 'attribute_mismatch', severity: 'medium', status: 'needs_review',
-    suggested_resolution: 'Owner name differs between revenue (OCR) and municipal GIS. Confirm with the latest khata.' },
-  { id: 'c-3', ward_id: '4', match_id: 'm-6', conflict_type: 'both', severity: 'critical', status: 'pending',
-    suggested_resolution: 'Utility connection maps to a different parcel; possible unauthorised sub-division.' },
-];
+  MAPPINGS.push(
+    { id: nextId('map'), source_a_id: cadId, source_b_id: revId, field_a: 'khata_no', field_b: 'khata_number', confidence: 0.96, rationale: 'Same identifier; suffix differs', approved: true },
+    { id: nextId('map'), source_a_id: cadId, source_b_id: revId, field_a: 'owner_name', field_b: 'owner', confidence: 0.92, rationale: 'Owner name, upper-cased in revenue register', approved: true },
+    { id: nextId('map'), source_a_id: cadId, source_b_id: revId, field_a: 'area_sqm', field_b: 'extent_sqyd', confidence: 0.71, rationale: 'Parcel extent; unit conversion sq.yd → m² needed', approved: true },
+  );
+
+  // Matching + conflicts + golden records, cluster per cadastral parcel.
+  cad.forEach((p, i) => {
+    const members = [p];
+    const scores = [];
+    const matchIds = [];
+    const push = (f, type, iou, dist) => {
+      const m = addMatch(W, p, f, 'cadastral', type, iou, dist);
+      detectConflict(m, p.properties, f.properties);
+      members.push(f); scores.push(m.match_score); matchIds.push(m.id);
+    };
+    const bad = i === 7;
+    push(mun[i], 'municipal_gis', bad ? 0.22 : 0.84 + rand() * 0.14, null);
+    const b = bld.find((x) => x.properties.bldg_id === `B-${W}-${i + 1}`);
+    if (b) push(b, 'building_footprint', 0.38 + rand() * 0.25, null);
+    push(rev[i], 'revenue', null, 1 + rand() * 6);
+    const g = gt.find((x) => x.properties.name === `GT-${W}-${i + 1}`);
+    if (g) push(g, 'ground_truth', null, 2 + rand() * 10);
+
+    const attrs = {}; const prov = {};
+    const rename = { khata_number: 'khata_no', owner: 'owner_name', extent_sqyd: 'area_sqyd' };
+    const typeOf = (f) => (f === p ? 'cadastral' : f === mun[i] ? 'municipal_gis' : f === b ? 'building_footprint' : f === rev[i] ? 'revenue' : 'ground_truth');
+    [...members].sort((x, y) => RELIABILITY[typeOf(y)] - RELIABILITY[typeOf(x)]).forEach((f) => {
+      for (const [k, v] of Object.entries(f.properties)) {
+        const key = rename[k] ?? k;
+        if (k.startsWith('_') || key in attrs || v == null || v === '') continue;
+        attrs[key] = v; prov[key] = typeOf(f);
+      }
+    });
+    HARMONIZED.push({
+      id: `hp-${W}-${String(i + 1).padStart(2, '0')}`, ward_id: W, geom_source_type: 'cadastral', geometry: p.geometry,
+      attributes: attrs, attribute_provenance: prov, member_feature_ids: members.map((f) => f.id), match_ids: matchIds,
+      confidence: round(scores.reduce((s, v) => s + v, 0) / scores.length / 100, 4),
+      conflict_count: CONFLICTS.filter((c) => matchIds.includes(c.match_id)).length, assembled_at: daysAgo(1),
+    });
+  });
+}
+
+// ── Change detections (properties table) ────────────────────────────────────
+const STATUSES = ['pending', 'pending', 'pending', 'verified', 'underassessed', 'false_positive', 'already_assessed'];
+export const PROPERTIES = [];
+let pn = 0;
+for (const w of WARDS) {
+  const k = { 1: 8, 2: 7, 3: 6, 4: 5, 5: 6 }[w.id];
+  for (let j = 0; j < k; j++) {
+    pn += 1;
+    const { north, south, east, west } = w.bbox;
+    const conf = round(0.45 + rand() * 0.52);
+    const ndbi = round(Math.min(0.42, conf * 0.4 + (rand() - 0.5) * 0.12), 3);
+    const type = rand() > 0.4 ? 'new_build' : 'change_of_use';
+    const p = {
+      id: `${String(pn).padStart(8, '0')}-4e1a-4c2b-9d3f-${String(1000 + pn).padStart(12, '0')}`,
+      ward_id: w.id, ward_name: w.name,
+      lat: round(south + (north - south) * (0.1 + rand() * 0.8), 6),
+      lng: round(west + (east - west) * (0.1 + rand() * 0.8), 6),
+      area_sqm: Math.round(60 + rand() * 480), detection_type: type, confidence: conf, ndbi_delta: ndbi,
+      confidence_breakdown: {
+        ndbi_delta: ndbi, area_delta: round(Math.min(1, conf + (rand() - 0.5) * 0.2), 3), osm_status: round(Math.min(1, conf * 0.95), 3),
+        ndvi_drop: round(Math.min(1, conf * 0.8 + rand() * 0.1), 3), db_match: round(Math.max(0, 1 - conf * 0.7), 3),
+      },
+      detected_at: daysAgo(pn * 0.3), status: STATUSES[pn % STATUSES.length], baseline_year: 2022, comparison_year: 2025, ai_explanation: null,
+    };
+    PROPERTIES.push(p);
+  }
+}
 
 export const CHAT_ANSWERS = [
-  'Ward **1 (Seethammadhara)** has the most pending detections. Start with properties above **80% confidence** — they are the most likely to be real new builds.',
-  'To verify a property: select it in the list, review the **confidence breakdown** and the AI analysis, then choose *Verified*, *Underassessed*, *False Positive* or *Already Assessed*.',
-  'A **high NDBI delta** (≥ 0.30) means a large increase in built-up surface between the two years — usually a new roof or paved area.',
-  'If the owner is not available, **raise a ticket** with the house number and a photograph. Your supervisor will review it.',
-  'City-wide, about **38%** of detections are change-of-use cases. These are often ground-floor shops in residential buildings.',
+  'Start with **critical conflicts** — they are usually a misplaced parcel (IoU < 0.30) where the municipal layer and cadastral map disagree. Keep the cadastral geometry (higher reliability) unless ground truth says otherwise.',
+  'Upload order that works well: **cadastral → municipal GIS → building footprints → revenue → ground truth**. Then run harmonization; matching, conflict detection and golden-record assembly happen automatically.',
+  'The confidence score is **0.4 × geometric match + 0.3 × attribute agreement + 0.2 × source reliability + 0.1 recency**. GNSS/CORS and cadastral sources carry the highest reliability.',
+  'Revenue registers use different field names (e.g. `khata_number`, `owner`). Use **Attribute mapping** to let the AI align them with the cadastral schema before assembling golden records.',
+  'Scanned revenue PDFs are digitised with OCR; each extracted field keeps its OCR confidence so low-confidence values can be checked before they enter the golden record.',
 ];
-
-export const BRIEF = `### GVMC Daily Detection Brief — ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-
-**Headline:** ${PROPERTIES.length} change detections across ${WARDS.length} monitored wards. **${PROPERTIES.filter((p) => p.status === 'pending').length}** still await field verification.
-
-#### Priorities
-- **Seethammadhara** leads with the most new builds. Deploy two field teams.
-- **Gopalapatnam** shows a cluster of commercial conversions along the NH-16 service road.
-- 1 critical harmonization conflict (utility vs municipal GIS) in **Asilmetta**.
-
-| Metric | Value |
-|---|---|
-| New builds | ${PROPERTIES.filter((p) => p.detection_type === 'new_build').length} |
-| Change of use | ${PROPERTIES.filter((p) => p.detection_type === 'change_of_use').length} |
-| Open tickets | ${TICKETS.filter((t) => t.status !== 'resolved').length} |
-`;

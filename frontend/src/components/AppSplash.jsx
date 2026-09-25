@@ -28,9 +28,9 @@ export default function AppSplash() {
       </div>
       <div className="flex items-center gap-1.5 text-base font-semibold text-ink">
         <MdSatellite className="text-lg text-primary" />
-        <span>GVMC Detection</span>
+        <span>NAKSHA GeoIntegrate</span>
       </div>
-      <p className="text-xs text-faint" role="status">Preparing satellite intelligence…</p>
+      <p className="text-xs text-faint" role="status">Loading geospatial workspace…</p>
     </motion.div>
   );
 }

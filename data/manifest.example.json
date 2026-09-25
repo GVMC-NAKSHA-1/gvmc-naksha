@@ -1,0 +1,21 @@
+{
+  "ward_id": "12",
+  "ward_name": "Official ward name (optional, informational)",
+  "files": [
+    {"path": "ori_w12.tif", "type": "ori", "captured_at": "2025-01-20",
+     "description": "Drone orthomosaic, 3 cm, NAKSHA flight 2025-01"},
+    {"path": "dsm_w12.tif", "type": "dsm_dtm", "captured_at": "2025-01-20",
+     "description": "2-band GeoTIFF: band 1 DSM, band 2 DTM"},
+    {"path": "cadastral_w12.zip", "type": "cadastral", "crs": "EPSG:24344", "captured_at": "2019-06-01",
+     "description": "Zipped shapefile; the .prj is used when crs is omitted"},
+    {"path": "property_tax_w12.zip", "type": "municipal_gis", "captured_at": "2024-04-01"},
+    {"path": "revenue_w12.csv", "type": "revenue", "captured_at": "2024-03-31",
+     "description": "CSV with lon/lat columns"},
+    {"path": "1b_record_210_1.pdf", "type": "revenue", "scanned": true, "captured_at": "2020-07-10",
+     "description": "Scanned record, goes to OCR"},
+    {"path": "water_network_w12.geojson", "type": "utility", "captured_at": "2022-08-01"},
+    {"path": "field_visits_w12.gpx", "type": "ground_truth", "captured_at": "2025-02-14"},
+    {"path": "control_points_w12.csv", "type": "gnss_cors", "crs": "EPSG:32644", "captured_at": "2024-10-10",
+     "description": "CSV with x/y in UTM 44N"}
+  ]
+}

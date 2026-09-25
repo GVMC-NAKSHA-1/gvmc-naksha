@@ -1,0 +1,12 @@
+# Only needed to run the data tools outside Docker (the compose `data` service reuses the worker
+# image, which already has these). duckdb is only for NAKSHA_BUILDINGS=overture.
+duckdb==1.5.5
+numpy==2.1.1
+shapely==2.0.6
+pyproj==3.6.1
+rasterio==1.3.11
+pyshp==2.3.1
+gpxpy==1.6.2
+pillow==10.4.0
+psycopg2-binary==2.9.9
+boto3==1.35.0

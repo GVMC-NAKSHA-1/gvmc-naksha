@@ -28,7 +28,10 @@ const FALLBACK = {
 @Injectable()
 export class LlmService {
   private readonly log = new Logger(LlmService.name);
-  private readonly model = 'llama-3.3-70b-versatile';
+  // Groq retires models; override with GROQ_MODEL. gpt-oss models reason before answering, and
+  // those tokens count against max_tokens, so they run at low effort with extra headroom.
+  private readonly model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+  private readonly reasoning = this.model.startsWith('openai/gpt-oss');
 
   // Lazy — build the client only on first use, and only when a key is set. This keeps the
   // API booting (and CI green) with no GROQ_API_KEY: every method below wraps chat() in
@@ -43,9 +46,11 @@ export class LlmService {
 
   private async chat(prompt: string, maxTokens = 400, temperature = 0.5): Promise<string> {
     const r = await this.groq.chat.completions.create({
-      model: this.model, max_tokens: maxTokens, temperature,
+      model: this.model, temperature,
+      max_tokens: this.reasoning ? maxTokens + 1024 : maxTokens,
+      ...(this.reasoning ? { reasoning_effort: 'low' } : {}),   // not in groq-sdk 0.7 types; sent as-is
       messages: [{ role: 'user', content: prompt }],
-    });
+    } as any);
     return r.choices[0].message.content!.trim();
   }
 

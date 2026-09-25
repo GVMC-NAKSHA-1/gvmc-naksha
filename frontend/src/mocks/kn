@@ -1,0 +1,23 @@
+equest URL
+https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/14/7374/11978
+Request method
+GET
+Status code
+200 OK (from disk cache)
+Remote address
+23.41.120.96:443
+Referrer policy
+strict-origin-when-cross-origin
+Request URL
+https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/14/7373/11980
+Referrer policy
+strict-origin-when-cross-origin
+Request URL
+https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/15/14746/23958
+Referrer policy
+strict-origin-when-cross-origin
+Request URL
+ws://localhost:3001/?token=ihYT_dZPldvs
+Request method
+GET
+Status code

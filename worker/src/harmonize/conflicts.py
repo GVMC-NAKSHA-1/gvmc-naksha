@@ -1,8 +1,6 @@
-import json, os
-import redis
-from db import cursor
-
-_r = redis.from_url(os.environ["REDIS_URL"])
+import json
+from db import cursor, ward_lock
+from queue_client import enqueue
 
 def _severity(match_score, attr_disagree_ratio, hard_geometry_disagreement):
     if match_score < 40 or hard_geometry_disagreement:
@@ -16,6 +14,7 @@ def _severity(match_score, attr_disagree_ratio, hard_geometry_disagreement):
 def detect_conflicts(job):
     ward = job["wardId"]
     with cursor() as cur:
+        ward_lock(cur, ward)
         cur.execute("""
             SELECT m.id, m.match_score, m.geometry_iou,
                    fa.properties AS a_props, fb.properties AS b_props
@@ -44,5 +43,6 @@ def detect_conflicts(job):
                  f"Reconcile {', '.join(disagree) or 'geometry'}; trust the higher-reliability source."))
             made += 1
     # B.10: (re)assemble the ward's golden record now that matches + conflicts are known.
-    _r.lpush("queue:ingest", json.dumps({"jobType": "ASSEMBLE_WARD", "wardId": ward}))
+    enqueue("ASSEMBLE_WARD", wardId=ward)
     print(f"[conflicts] ward {ward}: {made} created; enqueued ASSEMBLE_WARD")
+    return {"conflicts_created": made}

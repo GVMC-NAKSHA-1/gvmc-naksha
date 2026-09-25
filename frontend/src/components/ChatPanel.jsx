@@ -42,12 +42,12 @@ export default function ChatPanel() {
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             className="pointer-events-auto flex max-h-[min(520px,70vh)] w-[min(360px,100%)] flex-col overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-line"
             role="dialog"
-            aria-label="AI Field Assistant"
+            aria-label="GeoAI Assistant"
           >
-            <header className="bg-primary px-4 py-3 text-sm font-semibold text-white">AI Field Assistant</header>
+            <header className="bg-primary px-4 py-3 text-sm font-semibold text-white">GeoAI Assistant</header>
             <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
               {messages.length === 0 && (
-                <p className="text-xs italic text-faint">Ask me about flagged properties, ward statistics, or next steps.</p>
+                <p className="text-xs italic text-faint">Ask about data sources, matches, conflicts or how to resolve them.</p>
               )}
               {messages.map((m, i) => (
                 <div

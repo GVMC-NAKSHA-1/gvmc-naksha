@@ -16,7 +16,7 @@ export class HarmonizationService {
   listMatches(wardId: string | undefined, minScore: number) {
     const where: string[] = ['match_score >= $1']; const params: unknown[] = [minScore];
     if (wardId) { params.push(wardId); where.push(`ward_id = $${params.length}`); }
-    return q(this.pg, `SELECT * FROM matches WHERE ${where.join(' AND ')} ORDER BY match_score DESC`, params);
+    return q(this.pg, `SELECT * FROM matches WHERE ${where.join(' AND ')} ORDER BY match_score DESC LIMIT 5000`, params);
   }
 
   async matchDetail(id: string) {

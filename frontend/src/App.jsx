@@ -4,18 +4,28 @@ import { Route, Routes } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { fetchAdminConfig, selectConfigStatus } from './Redux/slices/adminSlice';
 import AppSplash from './components/AppSplash';
-import Navbar from './components/Navbar';
+import AppShell from './components/AppShell';
+import ChatPanel from './components/ChatPanel';
 import ScrollToTop from './components/ScrollToTop';
-import { AUTH_ENABLED } from './api/env';
 import Loader from './components/Loader';
+import { AUTH_ENABLED } from './api/env';
 
 // Route-level code splitting keeps MapLibre out of the initial bundle.
-const HomePage = lazy(() => import('./views/HomePage'));
-const FieldOfficerView = lazy(() => import('./views/FieldOfficerView'));
-const SupervisorView = lazy(() => import('./views/SupervisorView'));
-const CommissionerView = lazy(() => import('./views/CommissionerView'));
-const IntegrationView = lazy(() => import('./views/IntegrationView'));
-const AdminPanel = lazy(() => import('./views/AdminPanel'));
+const OverviewPage = lazy(() => import('./views/OverviewPage'));
+const SourcesPage = lazy(() => import('./views/SourcesPage'));
+const IntegrationMapPage = lazy(() => import('./views/IntegrationMapPage'));
+const MatchingPage = lazy(() => import('./views/MatchingPage'));
+const AttributeMappingPage = lazy(() => import('./views/AttributeMappingPage'));
+const ConflictsPage = lazy(() => import('./views/ConflictsPage'));
+const RecordsPage = lazy(() => import('./views/RecordsPage'));
+const ChangeDetectionPage = lazy(() => import('./views/ChangeDetectionPage'));
+const SettingsPage = lazy(() => import('./views/SettingsPage'));
+const GeorefPage = lazy(() => import('./views/GeorefPage'));
+const ExtractionPage = lazy(() => import('./views/ExtractionPage'));
+const TopologyPage = lazy(() => import('./views/TopologyPage'));
+const ValidationPage = lazy(() => import('./views/ValidationPage'));
+const ExchangePage = lazy(() => import('./views/ExchangePage'));
+const ActivityPage = lazy(() => import('./views/ActivityPage'));
 const LoginPage = lazy(() => import('./views/LoginPage'));
 const NotFound = lazy(() => import('./views/NotFound'));
 
@@ -30,21 +40,30 @@ export default function App() {
     <>
       <ScrollToTop />
       <AnimatePresence>{showSplash && <AppSplash key="app-splash" />}</AnimatePresence>
-      <Navbar />
-      <div className="min-h-screen pt-[92px]">
-        <Suspense fallback={<div className="flex justify-center py-20"><Loader size="lg" /></div>}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/officer" element={<FieldOfficerView />} />
-          <Route path="/supervisor" element={<SupervisorView />} />
-          <Route path="/commissioner" element={<CommissionerView />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/integration" element={<IntegrationView />} />
-          {AUTH_ENABLED && <Route path="/login" element={<LoginPage />} />}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+      <AppShell>
+        <Suspense fallback={<div className="flex justify-center py-24"><Loader size="lg" /></div>}>
+          <Routes>
+            <Route path="/" element={<OverviewPage />} />
+            <Route path="/sources" element={<SourcesPage />} />
+            <Route path="/map" element={<IntegrationMapPage />} />
+            <Route path="/matching" element={<MatchingPage />} />
+            <Route path="/attributes" element={<AttributeMappingPage />} />
+            <Route path="/conflicts" element={<ConflictsPage />} />
+            <Route path="/records" element={<RecordsPage />} />
+            <Route path="/changes" element={<ChangeDetectionPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/georef" element={<GeorefPage />} />
+            <Route path="/extraction" element={<ExtractionPage />} />
+            <Route path="/topology" element={<TopologyPage />} />
+            <Route path="/validation" element={<ValidationPage />} />
+            <Route path="/exchange" element={<ExchangePage />} />
+            <Route path="/activity" element={<ActivityPage />} />
+            {AUTH_ENABLED && <Route path="/login" element={<LoginPage />} />}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </Suspense>
-      </div>
+      </AppShell>
+      <ChatPanel />
     </>
   );
 }

@@ -14,14 +14,11 @@ export_harmonized  reads `harmonized_parcels` for the ward and writes a GeoPacka
 import json
 import tempfile
 
-from db import cursor
+from db import cursor, ward_lock
 from r2 import upload
+from queue_client import enqueue
 
-SOURCE_RELIABILITY = {
-    "gnss_cors": 1.0, "cadastral": 0.95, "ground_truth": 0.9, "building_footprint": 0.8,
-    "municipal_gis": 0.8, "utility": 0.75, "ori": 0.7, "dsm_dtm": 0.7, "revenue": 0.65,
-    "drone_imagery": 0.6,
-}
+from harmonize.scoring import SOURCE_RELIABILITY  # noqa: E402 — single source of truth
 
 
 class _UF:
@@ -42,6 +39,7 @@ class _UF:
 def assemble_ward(job):
     ward = job["wardId"]
     with cursor() as cur:
+        ward_lock(cur, ward)
         cur.execute(
             "SELECT id, feature_a_id, feature_b_id, match_score FROM matches WHERE ward_id = %s",
             (ward,),
@@ -115,6 +113,9 @@ def assemble_ward(job):
             )
             made += 1
     print(f"[assemble] ward {ward}: {made} harmonized parcels")
+    # Close the loop: re-validate the ward against the new golden records.
+    enqueue("VALIDATE_WARD", wardId=ward)
+    return {"harmonized_parcels": made}
 
 
 def export_harmonized(job):
@@ -134,25 +135,28 @@ def export_harmonized(job):
             "geometry": "MultiPolygon",
             "properties": {**{k: "str" for k in keys}, "hp_id": "str", "confidence": "float"},
         }
-        path = tempfile.mkstemp(suffix=f"_{ward}.gpkg")[1]
-        with fiona.open(path, "w", driver="GPKG", crs="EPSG:4326", schema=schema) as dst:
-            for r in rows:
-                dst.write({
-                    "geometry": r["geom"],
-                    "properties": {
-                        **{k: str((r["attributes"] or {}).get(k, "")) for k in keys},
-                        "hp_id": str(r["id"]),
-                        "confidence": r["confidence"] or 0.0,
-                    },
-                })
         key = f"exports/harmonized/{ward}_{export_id}.gpkg"
-        upload(path, key, "application/geopackage+sqlite3")
+        # Fiona refuses to write over an existing file, so the path must not exist yet (no mkstemp).
+        with tempfile.TemporaryDirectory() as tmp:
+            path = f"{tmp}/harmonized_{ward}.gpkg"
+            with fiona.open(path, "w", driver="GPKG", crs="EPSG:4326", schema=schema) as dst:
+                for r in rows:
+                    dst.write({
+                        "geometry": r["geom"],
+                        "properties": {
+                            **{k: str((r["attributes"] or {}).get(k, "")) for k in keys},
+                            "hp_id": str(r["id"]),
+                            "confidence": float(r["confidence"] or 0.0),
+                        },
+                    })
+            upload(path, key, "application/geopackage+sqlite3")
         with cursor() as cur:
             cur.execute(
                 "UPDATE harmonized_exports SET status='ready', r2_key=%s, feature_count=%s WHERE id=%s",
                 (key, len(rows), export_id),
             )
         print(f"[export] ward {ward}: {len(rows)} parcels -> {key}")
+        return {"parcels": len(rows), "key": key}
     except Exception as e:  # noqa: BLE001
         with cursor() as cur:
             cur.execute(

@@ -14,7 +14,8 @@ export class WardsService {
       SELECT w.id, w.name, w.bbox_north, w.bbox_south, w.bbox_east, w.bbox_west, w.geojson_r2,
              COUNT(p.id)::int AS detection_count
       FROM wards w LEFT JOIN properties p ON p.ward_id = w.id
-      GROUP BY w.id ORDER BY w.id`)
+      GROUP BY w.id
+      ORDER BY (substring(w.id FROM '^[0-9]+'))::int NULLS LAST, w.id`)
       .then(rows => rows.map(r => ({ ...r,
         bbox: { north: +r.bbox_north || 0, south: +r.bbox_south || 0, east: +r.bbox_east || 0, west: +r.bbox_west || 0 } })));
   }

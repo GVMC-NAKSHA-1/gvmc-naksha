@@ -41,9 +41,14 @@ def _llm_map(a_fields, b_fields):
         f"Dataset B fields: {b_fields}\n"
         "Return a JSON array only, no prose."
     )
+    # Groq retires models; override with GROQ_MODEL. gpt-oss reasons first (tokens count against
+    # max_tokens), so it runs at low effort with headroom.
+    model = os.environ.get("GROQ_MODEL") or "openai/gpt-oss-120b"
+    reasoning = model.startswith("openai/gpt-oss")
     raw = groq.chat.completions.create(
-        model="llama-3.3-70b-versatile", temperature=0.2, max_tokens=700,
+        model=model, temperature=0.2, max_tokens=700 + (1500 if reasoning else 0),
         messages=[{"role": "user", "content": prompt}],
+        extra_body={"reasoning_effort": "low"} if reasoning else None,
     ).choices[0].message.content
     return json.loads(raw[raw.index("["): raw.rindex("]") + 1])
 

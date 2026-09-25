@@ -11,17 +11,25 @@ def cursor():
     finally:
         conn.close()
 
+def ward_lock(cur, ward):
+    """Serialise ward-level jobs (match / conflicts / assemble / validate) across workers until the
+    transaction ends, so two workers never rewrite the same ward's matches at once."""
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"ward:{ward}",))
+
 def get_data_source(source_id):
     with cursor() as cur:
         cur.execute("SELECT * FROM data_sources WHERE id = %s", (source_id,))
         return cur.fetchone()
 
-def insert_source_feature(source_id, geom_geojson, properties, was_invalid):
+def insert_source_features(source_id, rows, page_size=1000):
+    """rows: [(geojson geometry, properties, was_invalid)] — one connection and one transaction."""
     with cursor() as cur:
-        cur.execute(
-            """INSERT INTO source_features (source_id, geom, properties, was_invalid)
-               VALUES (%s, ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326), %s, %s)""",
-            (source_id, json.dumps(geom_geojson), json.dumps(properties), was_invalid))
+        psycopg2.extras.execute_values(
+            cur,
+            "INSERT INTO source_features (source_id, geom, properties, was_invalid) VALUES %s",
+            [(source_id, json.dumps(g), json.dumps(p, default=str), bool(w)) for g, p, w in rows],
+            template="(%s, ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326), %s, %s)",
+            page_size=page_size)
 
 def set_status(source_id, status, error=None):
     with cursor() as cur:

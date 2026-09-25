@@ -12,6 +12,11 @@ export class SourcesController {
   @HttpCode(202)
   createUpload(@Body() dto: CreateSourceDto, @Req() req: any) { return this.svc.registerAndPresign(dto, req.user.id); }
 
+  @Post(':id/complete')
+  @Roles('admin', 'analyst')
+  @HttpCode(202)
+  complete(@Param('id') id: string, @Req() req: any) { return this.svc.completeUpload(id, req.user.id); }
+
   @Get()
   list(@Query() q: ListSourcesDto) { return this.svc.list(q); }
 
