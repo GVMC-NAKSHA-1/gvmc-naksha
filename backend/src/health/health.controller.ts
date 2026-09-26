@@ -3,8 +3,10 @@ import { Pool } from 'pg';
 import { PG } from '../infra/infra.module';
 import { R2 } from '../infra/r2.client';
 import { Queue } from '../infra/queue.client';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '../common/roles.decorator';
 
+@SkipThrottle()   // load balancers / uptime checks poll this
 @Controller('health')
 export class HealthController {
   constructor(@Inject(PG) private pg: Pool, private r2: R2, private queue: Queue) {}

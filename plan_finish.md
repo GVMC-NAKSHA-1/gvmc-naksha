@@ -605,7 +605,7 @@ A keyless **demo seed** (`demo_pipeline.sql`) contains deliberate topology error
 | `FOOTPRINT_MODEL_PATH` | worker | ONNX building-segmentation model; blank → nDSM / classical vision |
 | `VITE_API_URL`, `API_URL`, `FRONTEND_ORIGIN` | frontend, api | API base URL and CORS origin |
 | `VITE_MOCK` | frontend | `true` → run the UI entirely on MSW mock data |
-| `BREVO_API_KEY`, `BREVO_SENDER_*`, `RESEND_API_KEY` | api | Optional alert e-mails |
+| `BREVO_API_KEY`, `BREVO_SENDER_*` | api | Optional alert e-mails |
 | `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` | CI | SSH deployment of the API and worker images (GitHub secrets) |
 
 ---
@@ -736,7 +736,7 @@ Secrets are kept in GitHub / Vercel, never in the repository. `.env*` files are 
 - **Confidence weights and band thresholds** are expert-set. **Next:** learn them (logistic regression / gradient boosting) from officers' accept/reject decisions in the audit log.
 - **Topology:** fixes cover overlaps, gaps, slivers and duplicate vertices within one layer. **Next:** cross-layer snapping (edge-matching to GNSS/CORS control) and rule-based parcel-fabric adjustment.
 - **Geo-referencing:** supports affine and 2nd-order polynomial. **Next:** thin-plate spline for badly deformed sheets, and automatic GCP suggestion by feature matching (ORB/SIFT against ORI).
-- **Job queue durability:** `BRPOP` removes a job before it runs, so a worker killed mid-job loses that job, and the `pipeline_jobs` row stays `running`. Retries are immediate, with no back-off. **Next:** a reliable queue (`BLMOVE` into a per-worker processing list plus a reaper for stale `running` rows), or Redis Streams with consumer groups, and exponential back-off.
+- **Job queue durability:** delivery is at-least-once (done 2026-09-26). Each worker takes jobs with `BLMOVE` into its own processing list and keeps a heartbeat; jobs of a worker whose heartbeat expires are re-queued, `running` rows no worker holds are marked failed, and retries wait with exponential back-off (`worker/src/queue_client.py`). A handler may therefore run twice after a crash, so handlers must stay idempotent (they recompute per ward/source today). **Next:** Redis Streams with consumer groups if multiple queues are needed.
 - **Scale:** matching is per ward with spatial-index pruning; very large wards may need tiling or partitioned tables. The worker scales horizontally.
 - **Verification:** the Docker stack passed an end-to-end run (§13.1). **Next:** repeat it with real Supabase auth, R2 and the Groq key, click through the UI against the live API, and add the smoke test to CI as a job that runs `docker compose`.
 

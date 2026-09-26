@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { InfraModule } from './infra/infra.module';
 import { AuthGuard } from './common/auth.guard';
 import { HealthModule } from './health/health.module';
@@ -35,6 +36,9 @@ import { OgcModule } from './ogc/ogc.module';
 @Module({
   imports: [
     LoggerModule.forRoot({ pinoHttp: { level: process.env.LOG_LEVEL ?? 'info' } }),
+    // Per-IP request budget (set TRUST_PROXY behind Cloudflare so the IP is the client's).
+    // Generous by default: map pages and QGIS paging OGC items issue many requests.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: Number(process.env.RATE_LIMIT_PER_MIN ?? 600) }]),
     InfraModule, HealthModule, AuthModule, LlmModule,
     WardsModule, PropertiesModule, StatsModule, VerifyModule, ExportModule,
     AlertsModule, BriefModule, AdminModule, ChatModule, TicketsModule,
@@ -43,6 +47,10 @@ import { OgcModule } from './ogc/ogc.module';
     JobsModule, AuditModule, ExtractionModule, TopologyModule, GeorefModule, CrsModule,
     ChangesModule, ValidationModule, OgcModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
+  // Guards run in order: throttle first so unauthenticated floods never reach the auth lookup.
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AuthGuard },
+  ],
 })
 export class AppModule {}
