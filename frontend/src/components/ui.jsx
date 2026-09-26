@@ -1,4 +1,7 @@
 import { forwardRef } from 'react';
+import { useLocation } from 'react-router-dom';
+import { FiInfo } from 'react-icons/fi';
+import { STEPS, navFor } from './nav';
 
 export const cx = (...c) => c.filter(Boolean).join(' ');
 
@@ -56,6 +59,8 @@ export const Button = forwardRef(function Button(
     <button
       ref={ref}
       type={type}
+      // Icon-only buttons carry an aria-label; surface it as a hover tooltip too.
+      title={rest.title ?? rest['aria-label']}
       className={cx(
         'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border font-medium transition-colors duration-150',
         'focus-visible:shadow-focus focus-visible:outline-none disabled:opacity-60',
@@ -107,14 +112,30 @@ export function Skeleton({ className, style }) {
   return <span className={cx('skeleton', className)} style={style} />;
 }
 
-/** Page title block used at the top of every workspace. */
-export function PageHeader({ step, title, description, actions }) {
+/**
+ * Page title block used at the top of every workspace. The kicker ("Step 3 of 5 · Match & resolve")
+ * and the one-line summary come from the nav entry for the current route, so they always match the
+ * sidebar; `description` holds the longer technical explanation, folded under "How this works".
+ */
+export function PageHeader({ step, title, summary, description, actions }) {
+  const { pathname } = useLocation();
+  const nav = navFor(pathname);
+  const kicker = nav?.step ? `Step ${nav.step.n} of ${STEPS.length} · ${nav.step.title}` : step;
+  const lead = summary ?? nav?.hint;
   return (
     <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        {step && <Kicker>{step}</Kicker>}
+        {kicker && <Kicker>{kicker}</Kicker>}
         <h1 className="text-2xl font-bold tracking-tight text-ink">{title}</h1>
-        {description && <p className="mt-1 max-w-3xl text-sm text-subtle">{description}</p>}
+        {lead && <p className="mt-1 max-w-3xl text-sm text-subtle">{lead}</p>}
+        {description && (
+          <details className="group mt-1 max-w-3xl text-sm">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-primary hover:underline [&::-webkit-details-marker]:hidden">
+              <FiInfo aria-hidden="true" /> How this works
+            </summary>
+            <p className="mt-1.5 rounded-md bg-white px-3 py-2 text-xs leading-relaxed text-subtle ring-1 ring-line-light">{description}</p>
+          </details>
+        )}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

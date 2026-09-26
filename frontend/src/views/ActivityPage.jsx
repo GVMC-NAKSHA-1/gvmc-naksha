@@ -29,7 +29,7 @@ export default function ActivityPage() {
         step="Admin · Governance"
         title="Activity log"
         description="Every automated pipeline job and every human decision (conflict resolutions, topology fixes, verifications, geo-referencing) is recorded for traceable, standardised land governance."
-        actions={<Button variant="secondary" onClick={load}><FiRefreshCw /> Refresh</Button>}
+        actions={<Button variant="secondary" onClick={load} title="Reload jobs and the audit trail"><FiRefreshCw /> Refresh</Button>}
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {[['jobs', 'Pipeline jobs'], ['audit', 'Audit trail']].map(([k, l]) => (

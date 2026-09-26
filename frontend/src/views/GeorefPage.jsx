@@ -155,8 +155,7 @@ export default function GeorefPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Ingest · Geo-referencing & coordinate transformation"
-        title="Geo-referencing & CRS"
+        title="Align scanned maps"
         description="Scanned cadastral sheets and rasters without a coordinate system wait here. Pair points on the scan with the same points on the map; the engine fits an affine or 2nd-order polynomial transform, reports residuals and RMSE, and writes a GeoTIFF that re-enters the pipeline."
       />
 
@@ -208,8 +207,8 @@ export default function GeorefPage() {
                 <span className="ml-auto text-sm">
                   RMSE {preview?.rmse_m != null ? <strong style={{ color: residualColor(preview.rmse_m) }}>{preview.rmse_m.toFixed(2)} m</strong> : <span className="text-faint">needs {MIN[kind]} points</span>}
                 </span>
-                <Button variant="secondary" size="sm" onClick={() => { setGcps([]); setPending(null); }} disabled={!gcps.length}>Clear</Button>
-                <Button size="sm" onClick={() => dispatch(applyGeoref({ sourceId: src.id, gcps, kind, crs: 'EPSG:4326' }))} disabled={!ready || applyStatus === 'loading' || src.status !== 'needs_georef'}>
+                <Button variant="secondary" size="sm" onClick={() => { setGcps([]); setPending(null); }} disabled={!gcps.length} title="Remove all control points and start again">Clear points</Button>
+                <Button size="sm" onClick={() => dispatch(applyGeoref({ sourceId: src.id, gcps, kind, crs: 'EPSG:4326' }))} disabled={!ready || applyStatus === 'loading' || src.status !== 'needs_georef'} title="Warp the scan onto the map using these points and send it back into the pipeline">
                   <FiCheckCircle /> Apply & re-ingest
                 </Button>
               </div>
@@ -226,7 +225,7 @@ export default function GeorefPage() {
                             <td className={cx(td, 'font-mono text-xs')}>{g.px}, {g.py}</td>
                             <td className={cx(td, 'font-mono text-xs')}>{g.x.toFixed(6)}, {g.y.toFixed(6)}</td>
                             <td className={td}>{r != null ? <span style={{ color: residualColor(r) }} className="font-semibold tabular-nums">{r.toFixed(2)} m</span> : '—'}</td>
-                            <td className={td}><button type="button" aria-label={`Remove point ${i + 1}`} onClick={() => setGcps((x) => x.filter((_, j) => j !== i))} className="text-subtle hover:text-danger"><FiTrash2 /></button></td>
+                            <td className={td}><button type="button" aria-label={`Remove point ${i + 1}`} title={`Remove point ${i + 1}`} onClick={() => setGcps((x) => x.filter((_, j) => j !== i))} className="text-subtle hover:text-danger"><FiTrash2 /></button></td>
                           </tr>
                         );
                       })}

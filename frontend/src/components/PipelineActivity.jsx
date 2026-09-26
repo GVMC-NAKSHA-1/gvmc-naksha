@@ -35,14 +35,15 @@ export default function PipelineActivity() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Pipeline activity"
+        aria-label="Background jobs"
+        title={active.length ? `${active.length} background job(s) processing now — click to follow them` : 'See the processing jobs (uploads, AI detection, matching…) and whether they finished'}
         className={cx(
           'relative inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors',
           active.length ? 'border-info bg-info-light text-info-dark' : 'border-line text-subtle hover:text-ink',
         )}
       >
         <FiZap className={active.length ? 'animate-pulse-fade' : ''} />
-        <span className="hidden sm:inline">{active.length ? `${active.length} running` : 'Pipeline'}</span>
+        <span className="hidden sm:inline">{active.length ? `${active.length} job${active.length > 1 ? 's' : ''} running` : 'Jobs'}</span>
       </button>
 
       <AnimatePresence>
@@ -52,17 +53,17 @@ export default function PipelineActivity() {
             <motion.aside
               key="panel"
               role="dialog"
-              aria-label="Pipeline activity"
+              aria-label="Background jobs"
               className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col bg-white shadow-xl"
               initial={{ x: 400 }} animate={{ x: 0 }} exit={{ x: 400 }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             >
               <header className="flex items-center gap-2 border-b border-line px-4 py-3">
                 <FiZap className="text-primary" />
-                <h2 className="flex-1 text-sm font-semibold">Pipeline activity</h2>
-                <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="rounded p-1 hover:bg-hover"><FiX /></button>
+                <h2 className="flex-1 text-sm font-semibold">Background jobs</h2>
+                <button type="button" aria-label="Close" title="Close" onClick={() => setOpen(false)} className="rounded p-1 hover:bg-hover"><FiX /></button>
               </header>
               <p className="border-b border-line-light px-4 py-2 text-[11px] text-subtle">
-                Every ingestion, extraction, topology, matching, assembly and validation job — live from the worker queue.
+                Work the system does for you after an upload or a “Run” button: processing files, AI detection, matching, building records and quality checks. Updates live.
               </p>
               <ul className="min-h-0 flex-1 overflow-y-auto">
                 {shown.length === 0 && <li className="px-4 py-8 text-center text-xs text-subtle">No jobs yet.</li>}
@@ -88,8 +89,8 @@ export default function PipelineActivity() {
                   );
                 })}
               </ul>
-              <Link to="/activity" onClick={() => setOpen(false)} className="border-t border-line px-4 py-3 text-center text-xs font-medium">
-                Full activity log →
+              <Link to="/activity" onClick={() => setOpen(false)} title="Open the full history of jobs and decisions" className="border-t border-line px-4 py-3 text-center text-xs font-medium">
+                Open full activity log →
               </Link>
             </motion.aside>
           </>

@@ -45,12 +45,28 @@ async function renderPage(ui, { ward = '1', path = '/' } = {}) {
 }
 
 describe('AppShell', () => {
-  it('shows the pipeline navigation and the shared ward picker', async () => {
+  it('shows the five workflow steps, expands a step to reveal its pages, and the shared ward picker', async () => {
     await renderPage(<div />);
-    for (const label of ['Data sources', 'Geo-referencing', 'AI feature extraction', 'Topology QA', 'Integration map', 'Spatial matching', 'Attribute mapping', 'Conflicts', 'Validation & sync', 'Change detection', 'Golden records', 'Data exchange']) {
-      expect(screen.getAllByRole('link', { name: new RegExp(label) }).length).toBeGreaterThan(0);
+    for (const label of ['Home', 'Map viewer', 'Activity log', 'Settings & health']) {
+      expect(screen.getByRole('link', { name: new RegExp(label) })).toBeInTheDocument();
+    }
+    const steps = ['Bring in data', 'Clean & detect', 'Match & resolve', 'Check quality', 'Publish'];
+    for (const s of steps) expect(screen.getByRole('button', { name: new RegExp(s) })).toHaveAttribute('aria-expanded', 'false');
+    for (const s of steps) await userEvent.click(screen.getByRole('button', { name: new RegExp(s) }));
+    for (const label of ['Data sources', 'Align scanned maps', 'AI building detection', 'Fix geometry errors', 'Match parcels', 'Match field names', 'Resolve conflicts', 'Quality check', 'Compare surveys', 'Final records', 'Share with departments']) {
+      const link = screen.getByRole('link', { name: new RegExp(label) });
+      expect(link).toHaveAttribute('title');   // every destination explains itself on hover
     }
     expect(screen.getByLabelText('Ward')).toHaveValue('1');
+  });
+
+  it('opens the current step, labels the page with it and links to the previous / next step', async () => {
+    await renderPage(<ConflictsPage />, { path: '/conflicts' });
+    expect(screen.getByRole('button', { name: /Match & resolve/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Step 3 of 5 · Match & resolve')).toBeInTheDocument();
+    const pager = screen.getByRole('navigation', { name: 'Workflow steps' });
+    expect(within(pager).getByRole('link', { name: /Match field names/ })).toHaveAttribute('href', '/attributes');
+    expect(within(pager).getByRole('link', { name: /Quality check/ })).toHaveAttribute('href', '/validation');
   });
 });
 
@@ -62,10 +78,11 @@ describe('OverviewPage', () => {
       expect(screen.getByText(t)).toBeInTheDocument();
     }
     for (const t of ['Manual GIS effort avoided', 'Record accuracy', 'Consistency', 'Ready for finalisation']) expect(screen.getByText(t)).toBeInTheDocument();
-    for (const t of ['Geo-referencing', 'AI extraction', 'Topology QA', 'Validation & sync', 'Data exchange']) {
+    for (const t of ['Align scanned maps', 'AI building detection', 'Fix geometry errors', 'Quality check', 'Share with departments']) {
       expect(screen.getByRole('button', { name: new RegExp(t) })).toBeInTheDocument();
     }
-    await waitFor(() => expect(screen.getByRole('button', { name: /Golden records/ })).toHaveTextContent('12'), T);
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Final records/ })).toHaveTextContent('12'), T);
+    expect(await screen.findByText('Needs your attention')).toBeInTheDocument();
   }, 15000);
 });
 

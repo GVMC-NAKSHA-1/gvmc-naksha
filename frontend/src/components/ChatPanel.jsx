@@ -47,7 +47,7 @@ export default function ChatPanel() {
             <header className="bg-primary px-4 py-3 text-sm font-semibold text-white">GeoAI Assistant</header>
             <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
               {messages.length === 0 && (
-                <p className="text-xs italic text-faint">Ask about data sources, matches, conflicts or how to resolve them.</p>
+                <p className="text-xs italic text-faint">Ask about data sources, matches, conflicts or how to resolve them — e.g. “Why is ward 2 blocked?” or “What should I do next?”</p>
               )}
               {messages.map((m, i) => (
                 <div
@@ -85,6 +85,7 @@ export default function ChatPanel() {
                 onClick={send}
                 disabled={!text.trim() || loading}
                 aria-label="Send"
+                title="Send (Enter)"
                 className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-primary text-white hover:bg-primary-hover disabled:opacity-50"
               >
                 <FiSend />
@@ -96,6 +97,7 @@ export default function ChatPanel() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        title={open ? 'Close the assistant' : 'Ask questions about your data in plain language'}
         className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-lg transition hover:bg-primary-hover"
       >
         {open ? <><FiX /> Close Chat</> : <><FiMessageSquare /> AI Assistant</>}

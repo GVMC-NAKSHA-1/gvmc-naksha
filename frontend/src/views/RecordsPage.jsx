@@ -34,7 +34,7 @@ function RecordDetail({ record, onClose }) {
     <div className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 shadow-sm" aria-label="Golden record detail">
       <header className="flex items-center gap-2">
         <h2 className="flex-1 truncate font-mono text-sm font-semibold" title={record.id}>{record.id}</h2>
-        <button type="button" aria-label="Close" onClick={onClose} className="inline-flex size-8 items-center justify-center rounded-md text-subtle hover:bg-hover"><FiX /></button>
+        <button type="button" aria-label="Close" title="Close" onClick={onClose} className="inline-flex size-8 items-center justify-center rounded-md text-subtle hover:bg-hover"><FiX /></button>
       </header>
       <Meter label="Record confidence" value={record.confidence} color={signalColor(record.confidence ?? 0)} />
       <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -146,31 +146,30 @@ export default function RecordsPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Step 6 · Harmonized output"
-        title="Golden records"
+        title="Final records"
         description="Each cluster of matched features becomes one harmonized parcel: geometry from the most reliable polygon source, attributes merged with provenance, and a confidence score. Export for inter-departmental exchange."
         actions={(
           <>
-            <Button variant="secondary" onClick={assemble} disabled={assembleStatus === 'loading'}>
-              <FiRefreshCw className={assembleStatus === 'loading' ? 'animate-spin' : ''} /> {wardId ? 'Re-assemble ward' : 'Assemble all wards'}
+            <Button variant="secondary" onClick={assemble} disabled={assembleStatus === 'loading'} title="Rebuild the final records from the latest matches and conflict decisions">
+              <FiRefreshCw className={assembleStatus === 'loading' ? 'animate-spin' : ''} /> {wardId ? 'Rebuild records' : 'Rebuild records (all wards)'}
             </Button>
-            <Button onClick={() => doExport('geojson')} disabled={!wardId || exportStatus === 'loading'} title={wardId ? '' : 'Select a ward'}><FiDownload /> GeoJSON</Button>
-            <Button variant="secondary" onClick={() => doExport('gpkg')} disabled={!wardId || exportStatus === 'loading'} title={wardId ? '' : 'Select a ward'}><FiPackage /> GeoPackage</Button>
+            <Button onClick={() => doExport('geojson')} disabled={!wardId || exportStatus === 'loading'} title={wardId ? 'Download this ward’s final records as a GeoJSON file' : 'Choose a ward at the top first'}><FiDownload /> Download GeoJSON</Button>
+            <Button variant="secondary" onClick={() => doExport('gpkg')} disabled={!wardId || exportStatus === 'loading'} title={wardId ? 'Prepare a GeoPackage file (for QGIS / ArcGIS); it appears under Exports when ready' : 'Choose a ward at the top first'}><FiPackage /> Export GeoPackage</Button>
           </>
         )}
       />
       <div className="mb-4 flex flex-col gap-2">
-        {assembleStatus === 'succeeded' && <Notice tone="info">Assembly queued — records refresh shortly.</Notice>}
+        {assembleStatus === 'succeeded' && <Notice tone="info">Rebuilding records — the list refreshes shortly.</Notice>}
         {assembleStatus === 'failed' && <Notice tone="danger">{assembleError}</Notice>}
         {exportMsg && <Notice>{exportMsg}</Notice>}
         {exportStatus === 'failed' && <Notice tone="danger">{exportError}</Notice>}
-        {!wardId && <Notice tone="warning">Select a ward to see the records on the map and to export them.</Notice>}
+        {!wardId && <Notice tone="warning">Choose a ward at the top of the page to see its records on the map and to download them.</Notice>}
       </div>
 
       {readiness?.total > 0 && (
         <Card className="mb-4">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <SectionTitle>Cadastral finalisation readiness</SectionTitle>
+            <SectionTitle>Ready to finalise?</SectionTitle>
             <span className="ml-auto text-sm"><strong className="text-success">{readiness.ready_pct}%</strong> ready ({readiness.ready} of {readiness.total})</span>
           </div>
           <div className="flex h-3 overflow-hidden rounded-full bg-line-light">
@@ -190,7 +189,7 @@ export default function RecordsPage() {
       )}
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={FiLayers} label="Golden records" value={fmtNum(records.length)} hint={`${fmtNum(stats.members)} source features merged`} />
+        <StatCard icon={FiLayers} label="Final records" value={fmtNum(records.length)} hint={`${fmtNum(stats.members)} source features merged`} />
         <StatCard icon={FiLayers} accent="#198754" label="Mean confidence" value={stats.avg != null ? `${Math.round(stats.avg * 100)}%` : '—'} />
         <StatCard icon={FiLayers} accent="#20c997" label="High confidence (≥ 85%)" value={fmtNum(stats.high)} />
         <StatCard icon={FiLayers} accent="#dc3545" label="With open conflicts" value={fmtNum(stats.withConflicts)} />
@@ -227,7 +226,7 @@ export default function RecordsPage() {
               {status === 'loading' && !records.length ? (
                 <div className="flex flex-col gap-2 p-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
               ) : rows.length === 0 ? (
-                <EmptyState icon={FiLayers} message={records.length ? 'No records above this confidence.' : 'No golden records yet — run matching, then assemble.'} />
+                <EmptyState icon={FiLayers} message={records.length ? 'No records above this confidence.' : 'No final records yet — match parcels (step 3), then rebuild records.'} />
               ) : (
                 <table className="w-full min-w-[640px] border-collapse text-sm">
                   <thead><tr><th className={th}>Key attributes</th><th className={th}>Geometry</th><th className={cx(th, 'text-right')}>Members</th><th className={cx(th, 'w-40')}>Confidence</th><th className={cx(th, 'text-right')}>Conflicts</th></tr></thead>

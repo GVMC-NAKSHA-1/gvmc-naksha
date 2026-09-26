@@ -84,7 +84,7 @@ export default function ValidationPage() {
   if (!wardId) {
     return (
       <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
-        <PageHeader step="Validate · Quality & synchronisation" title="Validation & sync" />
+        <PageHeader title="Quality check" />
         <Card><EmptyState icon={FiCrosshair} message="Select a ward to validate its datasets." /></Card>
       </PageMotion>
     );
@@ -93,10 +93,9 @@ export default function ValidationPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Validate · Quality & synchronisation"
-        title="Validation & sync"
+        title="Quality check"
         description="Every dataset is scored against data-quality rules, and the AI-extracted / surveyed structures are synchronised against the cadastral fabric to surface unregistered structures, encroachments, vacant parcels and inter-departmental attribute drift."
-        actions={<Button onClick={run} disabled={status === 'loading'}><FiPlay /> {status === 'loading' ? 'Queuing…' : 'Run validation'}</Button>}
+        actions={<Button onClick={run} disabled={status === 'loading'} title="Score data quality and cross-check buildings against the cadastre"><FiPlay /> {status === 'loading' ? 'Queuing…' : 'Run validation'}</Button>}
       />
       {status === 'succeeded' && <div className="mb-4"><Notice tone="info">Validation queued — results refresh automatically.</Notice></div>}
       {error && <div className="mb-4"><Notice tone="danger">{error}</Notice></div>}

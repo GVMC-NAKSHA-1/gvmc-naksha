@@ -112,7 +112,7 @@ function EpochComparison() {
               <label className="flex flex-col gap-1"><span className={labelCls}>Height change ≥ (m)</span>
                 <input type="number" step="0.5" min="0.5" className={inputCls} value={heightM} onChange={(e) => setHeightM(e.target.value)} /></label>
             </div>
-            <Button onClick={start} disabled={!baseline || !current || baseline === current || runStatus === 'loading'}><FiPlay /> Detect changes</Button>
+            <Button onClick={start} disabled={!baseline || !current || baseline === current || runStatus === 'loading'} title="Compare the two surveys and list new, demolished and extended buildings"><FiPlay /> Detect changes</Button>
             {runError && <Notice tone="danger">{runError}</Notice>}
           </div>
         </Card>
@@ -197,8 +197,7 @@ export default function ChangeDetectionPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Validate · Change detection"
-        title="Change detection"
+        title="Compare surveys"
         description="Compare structure layers from two survey epochs (e.g. a 2023 footprint survey against 2025 AI extraction) to classify new, demolished, extended and vertically extended structures; satellite NDBI alerts flag change between surveys."
       />
       <div className="mb-4 flex gap-1" role="tablist">

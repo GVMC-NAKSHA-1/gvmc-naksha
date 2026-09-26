@@ -102,7 +102,7 @@ function UploadPanel({ wardId, wards, onUploaded }) {
           <span className={labelCls}>Captured on <em className="font-normal text-faint">optional</em></span>
           <input type="date" className={inputCls} value={capturedAt} onChange={(e) => setCapturedAt(e.target.value)} />
         </label>
-        <Button type="submit" disabled={!file || status === 'loading'} className="w-full">
+        <Button type="submit" disabled={!file || status === 'loading'} className="w-full" title={file ? 'Upload the file; it is converted, checked and added to the pipeline automatically' : 'Choose a file first'}>
           {status === 'loading' ? 'Uploading…' : 'Upload & process'}
         </Button>
         {status === 'succeeded' && <Notice>Uploaded. The worker is reprojecting to WGS84, repairing topology and extracting fields.</Notice>}
@@ -155,7 +155,7 @@ function SourceDetail({ id, onClose }) {
           </div>
           {src.description && <p className="mt-1 text-xs text-subtle">{src.description}</p>}
         </div>
-        <button type="button" aria-label="Close" onClick={onClose} className="inline-flex size-8 items-center justify-center rounded-md text-subtle hover:bg-hover"><FiX /></button>
+        <button type="button" aria-label="Close" title="Close" onClick={onClose} className="inline-flex size-8 items-center justify-center rounded-md text-subtle hover:bg-hover"><FiX /></button>
       </header>
 
       <div className="h-56 overflow-hidden rounded-lg border border-line-light">
@@ -182,7 +182,7 @@ function SourceDetail({ id, onClose }) {
       {src.error && <Notice tone="danger">{src.error}</Notice>}
       {src.status === 'needs_georef' && (
         <Notice tone="warning">
-          No coordinate system — <Link to="/georef" className="font-semibold">geo-reference it with control points</Link> to bring it into the pipeline.
+          No coordinate system — <Link to="/georef" className="font-semibold">align it on the map (Align scanned maps)</Link> to bring it into the pipeline.
         </Notice>
       )}
 
@@ -216,12 +216,12 @@ function SourceDetail({ id, onClose }) {
       <div className="flex flex-wrap gap-2">
         {canOcr && (
           <Button size="sm" onClick={() => dispatch(digitizeSource(src.id))} disabled={digitizeStatus === 'loading' || src.status === 'processing'}>
-            <FiFileText /> {digitizeStatus === 'loading' ? 'Queuing…' : 'Run OCR'}
+            <FiFileText /> {digitizeStatus === 'loading' ? 'Queuing…' : 'Read text from scan (OCR)'}
           </Button>
         )}
         {detail?.downloadUrl && (
           <a href={detail.downloadUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-line px-2 py-1 text-xs text-ink hover:border-primary hover:text-primary hover:no-underline">
-            <FiDownload /> Original file
+            <FiDownload /> Download original file
           </a>
         )}
         {detailStatus === 'loading' && <Loader size="sm" />}
@@ -261,10 +261,9 @@ export default function SourcesPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Step 1 · Ingestion & ETL"
         title="Data sources"
         description="Drone imagery, ORI, DSM/DTM, cadastral maps, revenue records, municipal GIS, utility networks, ground truth, GNSS/CORS and building footprints. Each upload is reprojected to WGS84, repaired and schema-profiled, then flows automatically into AI extraction, topology QA, matching and validation."
-        actions={<Button variant="secondary" onClick={load}><FiRefreshCw className={status === 'loading' ? 'animate-spin' : ''} /> Refresh</Button>}
+        actions={<Button variant="secondary" onClick={load} title="Reload the list of datasets"><FiRefreshCw className={status === 'loading' ? 'animate-spin' : ''} /> Refresh</Button>}
       />
 
       <div className="grid items-start gap-4 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)_380px]">
@@ -313,7 +312,7 @@ export default function SourcesPage() {
                       <td className={cx(td, 'text-right tabular-nums')}>{fmtNum(s.featureCount)}</td>
                       <td className={td}>
                         <Badge tone={SOURCE_STATUS[s.status] ?? 'secondary'}>{humanize(s.status)}</Badge>
-                        {s.status === 'needs_georef' && <Link to="/georef" onClick={(e) => e.stopPropagation()} className="ml-1.5 text-[11px] font-medium">Georeference →</Link>}
+                        {s.status === 'needs_georef' && <Link to="/georef" onClick={(e) => e.stopPropagation()} className="ml-1.5 text-[11px] font-medium" title="Open Align scanned maps to pin this scan to the map">Align on map →</Link>}
                       </td>
                       <td className={cx(td, 'whitespace-nowrap text-subtle')}>{fmtDate(s.capturedAt ?? s.createdAt)}</td>
                     </tr>

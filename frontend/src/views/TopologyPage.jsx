@@ -78,8 +78,7 @@ export default function TopologyPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Process · Automated topology correction"
-        title="Topology QA"
+        title="Fix geometry errors"
         description="Parcel fabrics from different departments rarely fit together cleanly. The engine finds overlapping parcels, gaps and slivers between neighbours and duplicate vertices, proposes a geometric fix for each, and can apply them automatically."
       />
 
@@ -103,8 +102,8 @@ export default function TopologyPage() {
                     <input type="number" step="0.05" min="0.05" className={inputCls} value={p.sliverMaxWidthM} onChange={(e) => setP({ ...p, sliverMaxWidthM: Number(e.target.value) })} /></label>
                   <label className="flex items-end gap-2 pb-2 text-xs"><input type="checkbox" className="accent-primary" checked={p.autoFix} onChange={(e) => setP({ ...p, autoFix: e.target.checked })} /> Auto-fix</label>
                 </div>
-                <Button onClick={run} disabled={!sourceId || runStatus === 'loading'}><FiPlay /> {runStatus === 'loading' ? 'Queuing…' : 'Run topology check'}</Button>
-                <Button variant="secondary" onClick={async () => { await dispatch(acceptAllIssues(sourceId)); refreshGeometry(); }} disabled={!counts.open}>
+                <Button onClick={run} disabled={!sourceId || runStatus === 'loading'} title="Scan the chosen layer for overlaps, gaps, slivers and duplicate points"><FiPlay /> {runStatus === 'loading' ? 'Queuing…' : 'Check for errors'}</Button>
+                <Button variant="secondary" onClick={async () => { await dispatch(acceptAllIssues(sourceId)); refreshGeometry(); }} disabled={!counts.open} title="Apply the suggested fix to every open issue in this layer">
                   <FiCheckCircle /> Accept all proposed fixes ({counts.open})
                 </Button>
                 {runStatus === 'succeeded' && <Notice tone="info">Topology check queued — issues appear below.</Notice>}
@@ -162,12 +161,12 @@ export default function TopologyPage() {
                         <p className="mt-1 text-subtle">{meta.fix}</p>
                         {i.status === 'open' && (
                           <div className="mt-2 flex gap-2">
-                            <Button size="sm" onClick={async (e) => { e.stopPropagation(); await dispatch(resolveIssue({ id: i.id, action: 'accept_fix' })); refreshGeometry(); }}><FiCheck /> Accept fix</Button>
-                            <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); dispatch(resolveIssue({ id: i.id, action: 'ignore' })); }}><FiEyeOff /> Ignore</Button>
+                            <Button size="sm" onClick={async (e) => { e.stopPropagation(); await dispatch(resolveIssue({ id: i.id, action: 'accept_fix' })); refreshGeometry(); }} title="Apply the suggested geometry fix"><FiCheck /> Accept fix</Button>
+                            <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); dispatch(resolveIssue({ id: i.id, action: 'ignore' })); }} title="Leave the geometry as it is and close this issue"><FiEyeOff /> Ignore</Button>
                           </div>
                         )}
                         {i.status === 'ignored' && (
-                          <Button size="sm" variant="ghost" className="mt-1" onClick={(e) => { e.stopPropagation(); dispatch(resolveIssue({ id: i.id, action: 'reopen' })); }}><FiRotateCcw /> Reopen</Button>
+                          <Button size="sm" variant="ghost" className="mt-1" onClick={(e) => { e.stopPropagation(); dispatch(resolveIssue({ id: i.id, action: 'reopen' })); }} title="Undo the decision and mark the issue open again"><FiRotateCcw /> Reopen</Button>
                         )}
                       </div>
                     </li>

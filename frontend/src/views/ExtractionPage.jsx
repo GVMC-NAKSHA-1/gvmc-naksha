@@ -90,8 +90,7 @@ export default function ExtractionPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Process · GeoAI / computer vision"
-        title="AI feature extraction"
+        title="AI building detection"
         description="Building footprints are extracted automatically from drone imagery, orthorectified imagery (ORI) and DSM/DTM rasters. The AI output becomes its own layer that is matched, validated and synchronised against cadastral and municipal records."
       />
 
@@ -126,7 +125,7 @@ export default function ExtractionPage() {
                     <input type="number" min="1" className={inputCls} value={minArea} onChange={(e) => setMinArea(e.target.value)} />
                   </label>
                 </div>
-                <Button onClick={start} disabled={!sourceId || selectedRaster?.status !== 'ready' || status === 'loading'}>
+                <Button onClick={start} disabled={!sourceId || selectedRaster?.status !== 'ready' || status === 'loading'} title="Detect building outlines in the chosen image; they become a new layer">
                   <FiPlay /> {status === 'loading' ? 'Queuing…' : 'Extract footprints'}
                 </Button>
                 {status === 'succeeded' && <Notice tone="info">Extraction queued — the result is matched and validated automatically.</Notice>}

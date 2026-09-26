@@ -117,8 +117,7 @@ export default function AttributeMappingPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Step 4 · Intelligent attribute mapping"
-        title="Attribute mapping"
+        title="Match field names"
         description="Departments name the same attribute differently (khata_no vs khata_number, owner vs owner_name). The GeoAI model proposes field correspondences from both schemas and sample rows; saved mappings are used when merging attributes into golden records."
       />
 
@@ -132,7 +131,7 @@ export default function AttributeMappingPage() {
               <input type="checkbox" className="accent-primary" checked={persist} onChange={(e) => setPersist(e.target.checked)} />
               Save for golden-record assembly
             </label>
-            <Button onClick={run} disabled={!a || !b || !columnsOf(a).length || !columnsOf(b).length || suggestStatus === 'loading'}>
+            <Button onClick={run} disabled={!a || !b || !columnsOf(a).length || !columnsOf(b).length || suggestStatus === 'loading'} title="Let the AI propose which field in dataset A matches which field in dataset B">
               <FiCpu /> {suggestStatus === 'loading' ? 'Mapping…' : 'Suggest with AI'}
             </Button>
           </div>

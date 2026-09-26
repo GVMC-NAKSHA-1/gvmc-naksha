@@ -64,7 +64,7 @@ export default function SettingsPage() {
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <SectionTitle className="flex items-center gap-1.5"><FiServer /> Service health</SectionTitle>
-            <Button variant="ghost" size="sm" onClick={() => dispatch(fetchHealth())}><FiRefreshCw className={healthStatus === 'loading' ? 'animate-spin' : ''} /> Check</Button>
+            <Button variant="ghost" size="sm" onClick={() => dispatch(fetchHealth())} title="Ask each backend service whether it is working"><FiRefreshCw className={healthStatus === 'loading' ? 'animate-spin' : ''} /> Check now</Button>
           </div>
           <ul className="flex flex-col gap-2">
             {SERVICES.map((s) => {
@@ -92,7 +92,7 @@ export default function SettingsPage() {
             <span className="text-subtle">Last refresh <strong className="text-ink">{fmtDateTime(lastRefresh)}</strong></span>
           </div>
           <p className="mb-3 text-xs text-subtle">Re-runs spatial matching, conflict detection and golden-record assembly for every ward.</p>
-          <Button onClick={() => dispatch(triggerRefresh())} disabled={running}>
+          <Button onClick={() => dispatch(triggerRefresh())} disabled={running} title="Re-run matching, conflict detection and record building for every ward">
             <FiRefreshCw className={running ? 'animate-spin' : ''} /> {running ? 'Running…' : 'Re-harmonize all wards'}
           </Button>
         </Card>
@@ -119,7 +119,7 @@ export default function SettingsPage() {
               </label>
             </div>
             <div className="flex items-center gap-3">
-              <Button type="submit" disabled={saveStatus === 'loading'}>Save thresholds</Button>
+              <Button type="submit" disabled={saveStatus === 'loading'} title="Save these detection thresholds; they apply to the next run">Save thresholds</Button>
               {saveStatus === 'succeeded' && <span className="text-xs text-success">Saved.</span>}
               {saveStatus === 'failed' && <span className="text-xs text-danger">Failed to save.</span>}
             </div>

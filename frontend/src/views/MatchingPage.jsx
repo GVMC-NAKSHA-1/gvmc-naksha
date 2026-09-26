@@ -67,7 +67,7 @@ function MatchDetail({ id, onClose }) {
     >
       <header className="flex items-center gap-2">
         <h2 className="flex-1 text-base font-semibold">Match comparison</h2>
-        <button type="button" aria-label="Close" onClick={onClose} className="inline-flex size-8 items-center justify-center rounded-md text-subtle hover:bg-hover"><FiX /></button>
+        <button type="button" aria-label="Close" title="Close" onClick={onClose} className="inline-flex size-8 items-center justify-center rounded-md text-subtle hover:bg-hover"><FiX /></button>
       </header>
       {status === 'loading' || !d || d.id !== id ? (
         <div className="flex justify-center py-10"><Loader /></div>
@@ -167,10 +167,9 @@ export default function MatchingPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Step 3 · AI/ML spatial matching"
-        title="Spatial matching"
+        title="Match parcels"
         description="Features from different sources are paired by geometry: candidate pairs within 50 m (spatial index), polygon overlap (IoU) or point-to-centroid distance, then scored with a weighted confidence model."
-        actions={<Button onClick={run} disabled={runStatus === 'loading'}><FiPlay /> {runStatus === 'loading' ? 'Queuing…' : `Run matching${wardId ? '' : ' (all wards)'}`}</Button>}
+        actions={<Button onClick={run} disabled={runStatus === 'loading'} title="Pair up parcels from different sources and score how well they match"><FiPlay /> {runStatus === 'loading' ? 'Queuing…' : `Run matching${wardId ? '' : ' (all wards)'}`}</Button>}
       />
       {runStatus === 'succeeded' && (
         <div className="mb-4"><Notice tone="info">

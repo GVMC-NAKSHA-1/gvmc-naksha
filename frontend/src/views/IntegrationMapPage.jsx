@@ -28,7 +28,7 @@ function FeatureCard({ picked, onClose }) {
       <div className="mb-2 flex items-center gap-2">
         <span className="size-2.5 rounded-sm" style={{ background: meta?.color ?? '#198754' }} />
         <strong className="flex-1 text-sm">{meta?.label ?? 'Golden record'}</strong>
-        <button type="button" aria-label="Close" onClick={onClose} className="rounded p-1 hover:bg-hover"><FiX /></button>
+        <button type="button" aria-label="Close" title="Close" onClick={onClose} className="rounded p-1 hover:bg-hover"><FiX /></button>
       </div>
       {picked.props._was_invalid && <Badge tone="warning" className="mb-2">geometry repaired</Badge>}
       {picked.props._confidence != null && <p className="mb-2">Confidence <strong>{Math.round(picked.props._confidence * 100)}%</strong> · {picked.props._conflict_count ?? 0} open conflicts</p>}
@@ -157,9 +157,8 @@ export default function IntegrationMapPage() {
 
       <aside className="glass flex min-h-0 flex-col gap-4 overflow-y-auto p-4 lg:w-80">
         <div>
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-primary">Step 2 · Web-GIS</span>
-          <h1 className="text-lg font-bold">Integration map</h1>
-          <p className="mt-1 text-xs text-subtle">All sources reprojected to a common CRS (EPSG:4326) and overlaid. Click a feature to inspect its attributes.</p>
+          <h1 className="text-lg font-bold">Map viewer</h1>
+          <p className="mt-1 text-xs text-subtle">Every data layer for the ward on one map. Click a layer below to show or hide it; click a shape on the map to see its details.</p>
         </div>
 
         <section>
@@ -174,6 +173,7 @@ export default function IntegrationMapPage() {
                     type="button"
                     onClick={() => toggle(r.key)}
                     aria-pressed={!hidden[r.key]}
+                    title={`${hidden[r.key] ? 'Show' : 'Hide'} ${r.label} on the map`}
                     className={cx('flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-hover', hidden[r.key] && 'opacity-50')}
                   >
                     <span className={cx('size-3 shrink-0', r.geom === 'point' ? 'rounded-full' : 'rounded-sm', r.geom === 'footprint' && 'border-2 border-dashed bg-transparent!')} style={{ background: r.color, borderColor: r.color }} />

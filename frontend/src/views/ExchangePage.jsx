@@ -45,8 +45,7 @@ export default function ExchangePage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Publish · Inter-departmental exchange"
-        title="Data exchange (OGC API – Features)"
+        title="Share with departments"
         description="Harmonized land records are published through the OGC API – Features standard (GeoJSON, CRS84). Revenue, municipal, utility and planning departments consume them directly in QGIS, ArcGIS, GDAL or their own systems — no file hand-offs."
       />
 
@@ -78,7 +77,7 @@ export default function ExchangePage() {
                         <td className={td}><span className="block font-medium">{c.title}</span><span className="block font-mono text-[11px] text-faint">{c.id}</span></td>
                         <td className={cx(td, 'text-right tabular-nums')}>{fmtNum(c.numberOfFeatures)}</td>
                         <td className={td}><Copy text={itemsUrl(c.id)} /></td>
-                        <td className={td}><Button size="sm" variant="secondary" onClick={() => setActive(c.id)}><FiEye /> Preview</Button></td>
+                        <td className={td}><Button size="sm" variant="secondary" onClick={() => setActive(c.id)} title="Show a sample of this collection on the map"><FiEye /> Preview</Button></td>
                       </tr>
                     ))}
                   </tbody>

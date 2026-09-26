@@ -111,11 +111,11 @@ function ConflictDetail({ conflict }) {
         <textarea className={inputCls} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Why this decision (kept cadastral geometry, owner confirmed from khata…)" />
       </label>
       <div className="grid grid-cols-3 gap-2">
-        <Button size="sm" className="bg-success! hover:brightness-95" onClick={() => act('resolved')} disabled={busy || conflict.status === 'resolved'}><FiCheckCircle /> Resolve</Button>
-        <Button size="sm" variant="secondary" onClick={() => act('needs_review')} disabled={busy || conflict.status === 'needs_review'}><FiEye /> Needs review</Button>
-        <Button size="sm" variant="secondary" onClick={() => act('rejected')} disabled={busy || conflict.status === 'rejected'}><FiSlash /> Reject</Button>
+        <Button size="sm" className="bg-success! hover:brightness-95" onClick={() => act('resolved')} disabled={busy || conflict.status === 'resolved'} title="Accept the suggested resolution and close this conflict"><FiCheckCircle /> Resolve</Button>
+        <Button size="sm" variant="secondary" onClick={() => act('needs_review')} disabled={busy || conflict.status === 'needs_review'} title="Flag for a field check before deciding"><FiEye /> Needs review</Button>
+        <Button size="sm" variant="secondary" onClick={() => act('rejected')} disabled={busy || conflict.status === 'rejected'} title="Dismiss — this is not a real conflict"><FiSlash /> Reject</Button>
       </div>
-      {resolveStatus === 'succeeded' && <Notice>Saved. Re-assemble golden records to apply it.</Notice>}
+      {resolveStatus === 'succeeded' && <Notice>Saved. Re-assemble the final records to apply it (Final records → Rebuild records).</Notice>}
       {resolveStatus === 'failed' && <Notice tone="danger">{resolveError}</Notice>}
     </motion.aside>
   );
@@ -149,10 +149,9 @@ export default function ConflictsPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        step="Step 5 · Spatial conflict resolution"
-        title="Conflicts"
+        title="Resolve conflicts"
         description="Where matched sources disagree on geometry (low overlap) or attributes, a conflict is raised with a severity and a suggested resolution. Resolve, send for field review, or reject — decisions feed the golden record."
-        actions={<Button variant="secondary" onClick={load}><FiRefreshCw className={status === 'loading' ? 'animate-spin' : ''} /> Refresh</Button>}
+        actions={<Button variant="secondary" onClick={load} title="Reload the list of conflicts"><FiRefreshCw className={status === 'loading' ? 'animate-spin' : ''} /> Refresh</Button>}
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
