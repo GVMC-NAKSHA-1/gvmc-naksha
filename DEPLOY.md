@@ -16,26 +16,26 @@ complete env-var reference see `key.md`. This file only tells you what to click/
 ```
                      ┌───────────────┐        ┌──────────────────┐
    Browser  ───────► │  Vercel        │──────► │  Backend (NestJS) │──┐
-                     │  (frontend/)   │  REST  │  Docker host       │  │
+                     │  (frontend/)   │  REST  │  Railway           │  │
                      └───────────────┘        └──────────────────┘  │
                                                         │             │
                                                         ▼             ▼
                                               ┌────────────┐   ┌────────────┐
                                               │  Worker     │   │  Supabase   │
                                               │  (Python)   │   │  Postgres/  │
-                                              │  Docker host│   │  PostGIS +  │
+                                              │  Railway    │   │  PostGIS +  │
                                               └────────────┘   │  Auth       │
                                                      │           └────────────┘
                             ┌────────────────────────┼───────────────┐
                             ▼                        ▼               ▼
                     ┌──────────────┐        ┌──────────────┐  ┌─────────────┐
-                    │ Cloudflare R2 │        │ Upstash Redis │  │ Groq (LLM)  │
+                    │ Cloudflare R2 │        │ Railway Redis │  │ Groq (LLM)  │
                     │ (object store)│        │ (job queue)   │  │ optional    │
                     └──────────────┘        └──────────────┘  └─────────────┘
 ```
 
-Backend and worker are built and pushed as Docker images to GHCR by GitHub Actions, then
-pulled and run on any Docker host you control over SSH. Frontend deploys to Vercel. Everything
+Backend API and worker run on **Railway**, which builds each one from its Dockerfile on every
+push to `main` (no server, no SSH). Frontend deploys to Vercel the same way. Everything
 else (DB/Auth, storage, queue, LLM, maps, email) is an external managed service.
 
 ### What's required vs optional to go live
@@ -44,8 +44,8 @@ else (DB/Auth, storage, queue, LLM, maps, email) is an external managed service.
 |---|---|---|
 | **Supabase** (Postgres+PostGIS, Auth) | Real data persistence, real login | Falls back to local dev-bypass auth + throwaway data — fine for a demo, not for prod |
 | **Cloudflare R2** | Uploading source files, exporting the harmonized cadastre | Everything else (matching, conflicts, golden-record assembly, inline GeoJSON) still works; uploads/exports don't |
-| **Upstash Redis** | Background job queue (ingest, harmonize, assemble) in prod | Must run your own Redis container instead |
-| **A Docker host** (any VM with SSH) | Running the backend API + worker in prod | No way to serve the API outside your laptop |
+| **Redis** (Railway Redis) | Background job queue (ingest, harmonize, assemble) in prod | Jobs never run |
+| **Railway** (Hobby plan) | Running the backend API + worker in prod | No way to serve the API outside your laptop |
 | **Vercel** | Hosting the frontend | No way to serve the UI outside `npm run dev` |
 | Groq API key | AI-generated chat answers / briefs / alerts / schema mapping | Those features return templated/deterministic text instead of a 500 |
 | Brevo API key | Sending ward-alert / ticket-review emails | Emails are skipped (logged, non-fatal) |
@@ -55,9 +55,8 @@ else (DB/Auth, storage, queue, LLM, maps, email) is an external managed service.
 ## 2. Prerequisites
 
 - GitHub account/org with `gh` CLI authed (`gh auth status`), `repo` + `workflow` scopes.
-- A small VM/box you control with Docker + Docker Compose installed, reachable over SSH
-  (any cloud VM, a home server, etc. — no specific provider required).
-- Accounts (all have free tiers): **Cloudflare**, **Supabase**, **Upstash**, **Vercel**,
+- A **Railway** account (sign in with GitHub; Hobby plan, $5/month including $5 of usage).
+- Accounts (all have free tiers): **Cloudflare**, **Supabase**, **Vercel**,
   **Groq** (optional), **Google Cloud** (optional, Maps JS API), **Brevo** (optional).
 - Docker + Docker Compose installed locally for the sanity check in Step 1.
 
@@ -128,10 +127,13 @@ Do these in order; later steps need the values produced here.
    (e.g. `https://app.yourdomain.com`, plus `http://localhost:3001` while testing).
 5. Leave `R2_ENDPOINT` blank (only needed to point at MinIO/LocalStack instead of real R2).
 
-### 4.3 Upstash Redis (job queue)
+### 4.3 Redis (job queue)
 
-1. Create a Redis database at upstash.com (free tier is fine to start).
-2. Grab the `REDIS_URL` (rediss:// TLS connection string).
+Use **Railway's Redis** (added in §7), in the same project as the API and worker. Don't use
+Upstash's free tier: the worker's crash-safe queue loop (blocking move, heartbeat, retry
+promotion, orphan sweep) sends roughly 50k commands a day even when idle, far beyond Upstash's
+free command quota. Railway Redis has no per-command limit and is reached over the private
+network.
 
 ### 4.4 Groq (optional — LLM features)
 
@@ -185,102 +187,114 @@ touching the live host.
 
 ## 6. GitHub Actions: Secrets vs Variables
 
-GitHub repos have **two** places under Settings → Secrets and variables → Actions: a
-**Secrets** tab (encrypted, masked in logs — use for anything sensitive) and a **Variables**
-tab (plain text — use for non-sensitive config). Checking the four workflow files in this repo
-directly (`test.yml`, `deploy-backend.yml`, `deploy-worker.yml`, `deploy-frontend.yml`): **none
-of them read `vars.*`.** Every value they need is a `secrets.*` reference, so **you only need
-GitHub Secrets here — zero repo Variables are required** for this project as it stands today.
+**No GitHub Secrets or Variables are needed.** The only workflow left is `test.yml` (tests and
+builds on every push/PR), and it reads none. Deploys happen outside GitHub Actions:
 
-### What the workflow YAML itself reads (must be Secrets)
+- **Frontend** → Vercel's Git integration (§8); its `VITE_*` values live in Vercel.
+- **Backend + worker** → Railway's Git integration (§7); their runtime values (`DATABASE_URL`,
+  `REDIS_URL`, `SUPABASE_*`, `GROQ_API_KEY`, `R2_*`, `BREVO_*`, …) live in Railway's Variables.
 
-Only these three are actually referenced inside `deploy-backend.yml` / `deploy-worker.yml`:
+Keep your own encrypted copy of those values (a password manager) — Railway and Vercel are the
+places the running app reads them from.
 
-| Secret | Used by |
-|---|---|
-| `DEPLOY_HOST` | SSH target hostname/IP |
-| `DEPLOY_USER` | SSH username |
-| `DEPLOY_SSH_KEY` | SSH **private** key matching the public key on the host |
-
-`GITHUB_TOKEN` is provided automatically by GitHub Actions for GHCR login — never set it
-yourself.
-
-### App/runtime secrets (not read by the workflow, but store them as Secrets too)
-
-These aren't referenced in the workflow YAML — they're consumed by the running app via the
-host's `.env` file — but keep them as GitHub Secrets as your canonical, encrypted copy so
-you're not passing them around some other way:
-
-`DATABASE_URL`, `REDIS_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`,
-`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `BREVO_API_KEY`,
-`BREVO_SENDER_EMAIL`.
-
-Set them all in one go:
-
-```bash
-for s in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY \
-         DATABASE_URL REDIS_URL SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY GROQ_API_KEY \
-         R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET_NAME \
-         BREVO_API_KEY BREVO_SENDER_EMAIL; do
-  gh secret set "$s" --repo <org-or-user>/gvmc-naksha
-done
-```
-
-### Only if using Option B for the frontend (§8)
-
-If you deploy the frontend via `deploy-frontend.yml` instead of Vercel's Git integration, also
-set: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (read directly in that workflow).
-
-### What about the frontend's `VITE_*` values?
-
-Those (`VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — the older
-`NEXT_PUBLIC_*` names are still accepted) are **not** GitHub Secrets or Variables — with Option A
-(recommended) they live entirely in the Vercel dashboard's Environment Variables page. They
-only need to exist on the GitHub side if you're using Option B, where Vercel's own CLI (`vercel
-pull`) fetches them from your already-configured Vercel project — you still set them in Vercel,
-not in GitHub.
-
-### If you add non-sensitive config later
-
-Should you ever need a genuinely non-secret config knob (e.g. a log level or a region name)
-that a workflow reads directly, that's what GitHub **Variables** (`gh variable set NAME
-value`) are for. Nothing in this repo needs one today.
+The earlier SSH deploy (`deploy-backend.yml` / `deploy-worker.yml` with `DEPLOY_HOST`,
+`DEPLOY_USER`, `DEPLOY_SSH_KEY`, images on GHCR) was removed in favour of Railway; it is in git
+history if you ever move to your own VM.
 
 ---
 
-## 7. Step 4 — Backend + worker deployment (Docker host)
+## 7. Step 4 — Backend + worker deployment (Railway)
 
-The existing workflows (`.github/workflows/deploy-backend.yml`,
-`.github/workflows/deploy-worker.yml`) already do this on every push to `main`:
-1. Build the Docker image from `backend/` or `worker/`.
-2. Push it to GHCR (`ghcr.io/<owner>/gvmc-backend` / `gvmc-worker`) — uses the built-in
-   `GITHUB_TOKEN`, **no secret needed** for this part.
-3. Wait for the `production` environment reviewer approval.
-4. SSH into `DEPLOY_HOST` as `DEPLOY_USER` and run `docker pull` + `docker compose up -d`.
+Railway builds `backend/` and `worker/` from their Dockerfiles on every push to `main`.
+`backend/railway.json` and `worker/railway.json` hold the build and restart settings; each
+service only rebuilds when files in its own folder change.
 
-To make that work:
+1. **Create the project** — railway.com → sign in with GitHub → **New Project → Deploy from
+   GitHub repo** → pick `GVMC-NAKSHA-1/gvmc-naksha`. Rename the created service to `api`.
+   It is a monorepo: if Railway offers to create several services from it, keep only the
+   backend and worker ones and delete any for `frontend/`, `data/` or `database/` (the frontend
+   is on Vercel, the database is Supabase). The first build may fail before step 2 is done —
+   that's expected.
+2. **`api` service** → Settings:
+   - Source → **Root Directory** `/backend`
+   - Config-as-code → **Railway Config File** `/backend/railway.json`
+   - Networking → **Generate Domain** (gives `https://<name>.up.railway.app`)
+3. **`worker` service** — **+ New → GitHub Repo** → same repo → rename to `worker` → Settings:
+   Root Directory `/worker`, Railway Config File `/worker/railway.json`. No domain (it has no
+   HTTP port).
+4. **Redis** — **+ New → Database → Add Redis**.
+5. **Variables** — each service → **Variables** (or Project Settings → **Shared Variables** for
+   values both need, then reference them):
 
-1. **Prepare the host** — any VM with Docker + Docker Compose installed and an SSH key you
-   control. Generate a deploy key pair and add the public key to the host's
-   `~/.ssh/authorized_keys`.
-2. **Copy compose + env to the host**, e.g. `/opt/gvmc/docker-compose.yml` and `/opt/gvmc/.env`
-   (real values this time — Supabase `DATABASE_URL`, real `REDIS_URL`, real R2 keys,
-   `AUTH_DEV_BYPASS=false`, `FRONTEND_ORIGIN=https://app.yourdomain.com`). If Supabase is your
-   Postgres, drop the bundled `db` service from `docker-compose.yml` on the host — you don't
-   need a second Postgres.
-3. **Set GitHub Actions secrets** — see §6 above for the full list and the `gh secret set`
-   loop. `DEPLOY_SSH_KEY` is the **private** key matching the public key you installed on the
-   host.
-4. **Trigger a deploy** by merging a PR that touches `backend/**` (or `worker/**`) into `main`,
-   then approve the `production` environment gate when prompted.
+   | Variable | api | worker | Value |
+   |---|---|---|---|
+   | `DATABASE_URL` (api) | ✓ | | Supabase → Connect → **Session pooler** string + `?sslmode=no-verify` |
+   | `DATABASE_URL` (worker) | | ✓ | the same string + `?sslmode=require` |
+   | `REDIS_URL` | ✓ | ✓ | `${{Redis.REDIS_URL}}` (Railway fills it in) |
+   | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | ✓ | ✓ | §4.2 |
+   | `GROQ_API_KEY` | ✓ | ✓ | §4.4 (optional) |
+   | `AUTH_DEV_BYPASS` | `false` | | real login — the API refuses to boot with `true` and a non-local `FRONTEND_ORIGIN` |
+   | `PROFILES_SOURCE` | `local` | | first user to sign in becomes admin |
+   | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | ✓ | | Supabase → Settings → API |
+   | `FRONTEND_ORIGIN` | ✓ | | your Vercel URL, e.g. `https://gvmc-naksha-rho.vercel.app` |
+   | `TRUST_PROXY` | `1` | | Railway's edge proxy — so rate limits see the client IP |
+   | `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` | ✓ | | optional e-mail alerts |
+
+   Don't set `PORT` — Railway injects it and the API listens on it.
+
+   **Why two `DATABASE_URL`s:** both encrypt the connection, but the libraries spell it
+   differently. The API's Node `pg` treats `sslmode=require` as "verify the certificate" and
+   rejects Supabase's CA (`self-signed certificate in certificate chain`); the worker's
+   psycopg2 doesn't know `no-verify` (`invalid sslmode value`). Use the **session pooler**
+   host (`…pooler.supabase.com`), not `db.<ref>.supabase.co` — that one is IPv6-only.
+6. **Migrations** — Railway does not run them. Apply them to Supabase from your PC with the
+   bundled migrate container (idempotent; seeds only an empty database):
+
+   ```bash
+   docker compose run --rm --no-deps -e DATABASE_URL="<supabase session pooler url>" migrate
+   ```
+
+   Run it again whenever a new `database/migrations/*.sql` is added, **before** pushing the
+   code that needs it.
+7. **Deploy** — pushing to `main` redeploys only the services whose folder changed. Redeploys
+   are safe mid-job: the worker's heartbeat expires and another worker re-queues its job within
+   ~30 s.
+8. **Point the frontend at it** — Vercel → Environment Variables → `VITE_API_URL` =
+   the `api` domain → Redeploy.
+
+### Troubleshooting
+
+Check **service → Deployments → View logs** (Build Logs for build errors, Deploy Logs for
+crashes).
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Build uses Railpack/Nixpacks, "no start command", or builds the whole repo | Root Directory / config file not set | Root Directory `/backend` or `/worker`, config file `/backend/railway.json` or `/worker/railway.json`, then Redeploy |
+| `Dockerfile not found` / `failed to read dockerfile` | Root Directory wrong | `dockerfilePath` is relative to the Root Directory — it must be `/backend` or `/worker` |
+| "Healthcheck failed", deploy never goes live | The API crashed at start | Open Deploy Logs and match the error below |
+| `AUTH_DEV_BYPASS=true but FRONTEND_ORIGIN includes …` | Login bypass left on | `AUTH_DEV_BYPASS=false` |
+| `self-signed certificate in certificate chain` (api) | `sslmode=require` on the API | API `DATABASE_URL` ends with `?sslmode=no-verify` |
+| `invalid sslmode value: "no-verify"` (worker) | API's flag used on the worker | Worker `DATABASE_URL` ends with `?sslmode=require` |
+| `tenant/user … not found` | Wrong pooler host/user, or project paused | Copy the Session pooler string again from Supabase → Connect; resume the project |
+| `ENETUNREACH` / timeout to `db.<ref>.supabase.co` | Direct DB host is IPv6-only | Use the pooler host |
+| `relation "pipeline_jobs" does not exist` (or another table) | Migrations not applied to Supabase | Step 6 |
+| `ENOTFOUND` / `ECONNREFUSED` `redis.railway.internal` | Redis not added/linked, or private network is IPv6-only | `REDIS_URL=${{Redis.REDIS_URL}}`; if it persists, add `socket: { family: 0 }` to `createClient()` in `backend/src/infra/queue.client.ts` |
+| Worker logs nothing after `up, waiting on queue:ingest` | Normal — it is idle | Upload a source or run matching to give it work |
+| Browser: "blocked by CORS policy" | `FRONTEND_ORIGIN` ≠ the site's URL | Exact URL, `https://`, no trailing slash |
+| Browser calls `localhost:3000` or "mixed content" | `VITE_API_URL` unset or not rebuilt | Set it in Vercel, then **Redeploy** (it is baked in at build time) |
+| Every page shows 401 | Login is on | Sign in; the first account becomes admin |
+| 429 Too Many Requests for everyone | `TRUST_PROXY` missing, all users share the proxy IP | `TRUST_PROXY=1` |
+| Upload / export fails | R2 keys are placeholders, or the bucket lacks CORS | Real R2 keys; R2 bucket CORS allowing `PUT`/`GET` from the Vercel URL |
+| Worker build takes 5–10 min | GDAL + Tesseract + OpenCV image is ~2.4 GB | Normal, only on worker changes |
 
 ---
 
 ## 8. Step 5 — Frontend deployment (Vercel)
 
-Pick **one** of these two paths — don't run both.
+**This repo uses Option A.** `deploy-frontend.yml` was removed: with no `VERCEL_TOKEN` secret it
+failed on every push, and alongside the Git integration it would deploy twice.
 
-**Option A — Vercel Git integration (simplest, recommended):**
+**Option A — Vercel Git integration (in use):**
 1. vercel.com → Import Project → select your GitHub repo.
 2. Root Directory = `frontend/`.
 3. Project → Settings → Environment Variables, set:
@@ -290,22 +304,28 @@ Pick **one** of these two paths — don't run both.
 
    These are baked in at build time — redeploy after changing them. `frontend/vercel.json` sets the
    Vite framework preset and the SPA rewrite so deep links like `/officer` work.
-4. Every push to `main` auto-deploys. You can disable/delete `.github/workflows/deploy-frontend.yml`
-   if you use this path, to avoid a duplicate deploy.
+4. Every push to `main` auto-deploys; every other branch / PR gets a preview URL.
+5. To keep broken code off production, turn on GitHub branch protection for `main` and require the
+   `test` workflow to pass before merging.
+6. Keep `frontend/vercel.json` valid JSON — regex dots in the rewrite must be escaped as `\\.`
+   (a single `\.` is an invalid JSON escape and Vercel rejects the file). Without the rewrite,
+   refreshing any page other than `/` returns 404.
 
-**Option B — GitHub Actions workflow (`deploy-frontend.yml`):**
-1. Create a Vercel project as above but skip its Git integration (or disconnect it).
-2. Set `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` as GitHub Secrets (see §6).
-3. The existing workflow runs `vercel deploy` on push to `main`.
+**Option B — GitHub Actions + Vercel token (not used):** only worth it if you need custom steps
+before deploying. It needs a `VERCEL_TOKEN` (full access to the Vercel account) plus
+`VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` as GitHub Secrets and a workflow running
+`vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod` (see git history for
+the removed `deploy-frontend.yml`).
 
 ---
 
 ## 9. Step 6 — DNS and network hardening
 
-1. Cloudflare DNS: `app.yourdomain.com` → Vercel (CNAME per Vercel's instructions);
-   `api.yourdomain.com` → your Docker host's IP (A/AAAA record), proxied through Cloudflare.
-2. Set the backend's `FRONTEND_ORIGIN` (in the host's `.env`) to `https://app.yourdomain.com`
-   so CORS allows the real frontend.
+1. Optional custom domains: `app.yourdomain.com` → Vercel (CNAME per Vercel's instructions);
+   `api.yourdomain.com` → Railway (`api` service → Settings → Networking → Custom Domain, then
+   the CNAME it shows). Without them the `*.vercel.app` / `*.up.railway.app` URLs work fine.
+2. Set the `api` service's `FRONTEND_ORIGIN` (Railway Variables) to the frontend URL so CORS
+   allows it.
 3. Cloudflare → WAF: add rate limits on `/chat`, `/sources/upload`, `/harmonization/*`,
    `/harmonized/*`, `/properties/*/explain` — these are the most expensive/abusable routes.
 4. Enable HTTPS-only (Cloudflare "Always Use HTTPS").
@@ -344,7 +364,7 @@ curl https://api.yourdomain.com/api/health
 [ ] Cloudflare WAF + rate limits on /chat /sources/upload /harmonization/* /harmonized/* /properties/*/explain
 [ ] AUTH_DEV_BYPASS=false in every deployed environment
 [ ] audit_logs row confirmed for source ingest, conflict resolution, verify transitions
-[ ] Free-tier quotas checked: Supabase storage, R2 egress, Upstash commands, Groq usage, GitHub Actions minutes, Vercel bandwidth
+[ ] Free-tier quotas checked: Supabase storage, R2 egress, Railway usage, Groq usage, GitHub Actions minutes, Vercel bandwidth
 ```
 
 ---
@@ -355,39 +375,40 @@ curl https://api.yourdomain.com/api/health
 
 | Var | Where it's set | Required? | Purpose |
 |---|---|---|---|
-| `DATABASE_URL` | host `.env`, GH secret | ✅ prod | Postgres/PostGIS DSN (Supabase in prod; blank = bundled container locally) |
-| `REDIS_URL` | host `.env`, GH secret | ✅ prod | Upstash Redis job queue (blank = bundled container locally) |
-| `AUTH_DEV_BYPASS` | host `.env` | must be `false` in prod | `true` = no-auth dev mode; **never** set `true` on a deployed env |
-| `PROFILES_SOURCE` | host `.env` | when auth bypass off | `local` or `supabase` |
-| `SUPABASE_URL` / `VITE_SUPABASE_URL` | host `.env` / Vercel | ✅ prod | Supabase project URL |
+| `DATABASE_URL` | Railway vars | ✅ prod | Postgres/PostGIS DSN (Supabase in prod; blank = bundled container locally) |
+| `REDIS_URL` | Railway vars | ✅ prod | Railway Redis job queue (blank = bundled container locally) |
+| `AUTH_DEV_BYPASS` | Railway vars | must be `false` in prod | `true` = no-auth dev mode; **never** set `true` on a deployed env. The API refuses to boot with it on when `FRONTEND_ORIGIN` is non-local |
+| `AUTH_DEV_BYPASS_ALLOW_REMOTE` | Railway vars | no | `true` overrides that boot check — only for a deliberately open demo |
+| `RATE_LIMIT_PER_MIN` | Railway vars | optional (600) | per-IP request budget; 429 above it, `/api/health` exempt |
+| `TRUST_PROXY` | Railway vars | ✅ on Railway (`1`) | proxy hop count (e.g. `1`) so rate limits key on the client IP, not the proxy's |
+| `JOB_BACKOFF_SECONDS` | Railway vars | optional (5) | worker retry back-off base: base, 2×, 4× (cap 600 s) |
+| `PROFILES_SOURCE` | Railway vars | when auth bypass off | `local` or `supabase` |
+| `SUPABASE_URL` / `VITE_SUPABASE_URL` | Railway vars / Vercel | ✅ prod | Supabase project URL |
 | `SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY` | Vercel | ✅ prod | client-side auth |
-| `SUPABASE_SERVICE_ROLE_KEY` | host `.env`, GH secret | ✅ prod | backend-only, verifies JWTs / admin ops |
-| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | host `.env`, GH secret | ✅ for uploads/export | Cloudflare R2 |
-| `R2_ENDPOINT` | host `.env` | optional | override for MinIO/LocalStack instead of R2 |
-| `GROQ_API_KEY` | host `.env`, GH secret | optional | LLM chat/brief/alerts/schema-map |
-| `VITE_API_URL` / `API_URL` | Vercel / host `.env` | ✅ prod | backend base URL the frontend calls |
-| `FRONTEND_ORIGIN` | host `.env` | ✅ prod | CORS allow-list |
-| `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_SENDER_NAME` | host `.env`, GH secret | optional | transactional email alerts |
-| `RESEND_API_KEY` | — | not used yet | reserved placeholder, no code reads it today |
-| `WAZUH_HOST` | — | not used yet | reserved placeholder for SIEM log shipping |
-| `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_SSH_KEY` | GH secret only | ✅ for CI deploy | SSH target for `deploy-backend.yml` / `deploy-worker.yml` |
-| `VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` | GH secret | only if using Option B in §7 | CLI-driven Vercel deploy |
+| `SUPABASE_SERVICE_ROLE_KEY` | Railway vars | ✅ prod | backend-only, verifies JWTs / admin ops |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | Railway vars | ✅ for uploads/export | Cloudflare R2 |
+| `R2_ENDPOINT` | Railway vars | optional | override for MinIO/LocalStack instead of R2 |
+| `GROQ_API_KEY` | Railway vars | optional | LLM chat/brief/alerts/schema-map |
+| `VITE_API_URL` / `API_URL` | Vercel / Railway vars | ✅ prod | backend base URL the frontend calls |
+| `FRONTEND_ORIGIN` | Railway vars | ✅ prod | CORS allow-list |
+| `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_SENDER_NAME` | Railway vars | optional | transactional email alerts |
 
 Full narrative version of this table lives in `key.md`.
 
 ## Appendix B — Known gaps / roadmap (not blockers, but good to set expectations on)
 
-- **No automated tests yet** — `test.yml` currently passes trivially (`--passWithNoTests` for
-  the backend, pytest exit-5 "no tests collected" for the worker).
-- **B.8 drone/imagery module is a stub** — ingests a flagged bounding box + confidence only,
-  no actual computer-vision feature extraction.
-- Several PS 26013 "advanced AI/GIS" capabilities are intentionally deferred beyond MVP
-  (see `final.md` §16 for the full table): a learned/ML spatial-match scorer (currently a
-  deterministic IoU/centroid/name-overlap blend), full parcel-fabric topology correction
-  (snap/rebuild/sliver removal — only basic geometry-validity fixing exists today),
-  GCP-based georeferencing of raw drone/scanned imagery, DSM/DTM per-parcel height/slope
-  analysis, dataset change/version detection, CV-based building/road feature extraction,
-  LLM-suggested conflict auto-resolution, incremental (vs. full) re-harmonization, an
-  OGC API - Features endpoint, and LGD/DILRMP field alignment.
+The earlier gap list here (no tests, no OGC endpoint, no geo-referencing, no CV extraction, basic
+topology only) is out of date — all of those are implemented and tested; see
+`plan_finish.md` §3 (traceability), §13 (test status) and §17 (current limitations). What remains:
 
-None of these block a working deployment — they're feature depth to add after go-live.
+- **Not yet verified against the real services** — the end-to-end run used `AUTH_DEV_BYPASS=true`,
+  MinIO instead of R2, and no Groq key; the UI was tested against the MSW mock API. Repeat the
+  §13.1 run with Supabase auth, R2 and Groq before go-live.
+- **`drone` module** (`POST /api/drone/flagged-tile`) still only ingests an edge-flagged bounding
+  box + confidence. Full drone imagery goes through the normal upload → extraction path instead.
+- **No bundled building model** — the ONNX path activates only when a model is supplied; otherwise
+  nDSM / classical extraction runs.
+- **NDBI satellite alerts are seeded demo data**; no automatic Sentinel-2 pipeline yet.
+- **Confidence weights are expert-set**, not yet learned from officer decisions.
+- Security logging to Wazuh is done by the host's Wazuh agent tailing the container logs (Pino
+  JSON); the app itself needs no Wazuh setting. Email uses Brevo; Resend is not wired.

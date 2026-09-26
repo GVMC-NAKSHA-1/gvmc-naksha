@@ -36,5 +36,5 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gdal-bin libgdal-dev tesseract-ocr poppler-utils libgl1
       - working-directory: ./worker
         run: |
-          pip install --no-cache-dir -r requirements.txt pytest
+          pip install --no-cache-dir -r requirements.txt pytest fakeredis
           pytest -q

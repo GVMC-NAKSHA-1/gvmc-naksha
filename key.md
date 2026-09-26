@@ -156,11 +156,6 @@ any of these to run or develop the app:
 
 | Variable | Intended future use |
 |---|---|
-| `RESEND_API_KEY` | Transactional email via Resend (Brevo is wired instead — see §5) |
-| `WAZUH_HOST` | Security monitoring agent target |
-| `DEPLOY_HOST` | Deployment target host |
-| `DEPLOY_USER` | Deployment SSH user |
-| `DEPLOY_SSH_KEY` | Deployment SSH private key |
 
 ---
 
