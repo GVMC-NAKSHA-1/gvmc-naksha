@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { FiInfo } from 'react-icons/fi';
+import { FiAlertCircle, FiInfo } from 'react-icons/fi';
 import { STEPS, navFor } from './nav';
 
 export const cx = (...c) => c.filter(Boolean).join(' ');
@@ -104,6 +104,32 @@ export function ErrorBanner({ children }) {
   return (
     <div className="mb-3 rounded-md border border-danger bg-danger-light px-4 py-2 text-sm text-danger-dark" role="alert">
       {children}
+    </div>
+  );
+}
+
+/**
+ * User-facing error: a plain-language title and explanation, optional actions (Retry / Dismiss),
+ * and the raw technical message folded away for whoever needs to debug it.
+ */
+export function ErrorPanel({ title, error, actions }) {
+  if (!error) return null;
+  return (
+    <div role="alert" className="flex animate-scale-in flex-col gap-2 rounded-xl border border-danger/40 bg-danger-light/50 px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+        <FiAlertCircle className="mt-0.5 shrink-0 text-danger" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-danger-dark">{title}</p>
+          <p className="text-danger-dark/90">{error.message}</p>
+        </div>
+        {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
+      </div>
+      {error.detail && (
+        <details className="pl-7 text-xs text-subtle">
+          <summary className="cursor-pointer select-none hover:text-ink">Technical details</summary>
+          <code className="mt-1 block break-all rounded bg-white/70 px-2 py-1 font-mono">{error.detail}</code>
+        </details>
+      )}
     </div>
   );
 }

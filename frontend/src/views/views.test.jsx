@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { setupServer } from 'msw/node';
+import { http, HttpResponse } from 'msw';
 import { handlers } from '../mocks/handlers';
 import { makeStore } from '../Redux/Store.jsx';
 import { fetchWards, setSelectedWard } from '../Redux/slices/wardsSlice';
@@ -71,18 +72,36 @@ describe('AppShell', () => {
 });
 
 describe('OverviewPage', () => {
-  it('shows PS outcomes, every pipeline stage and all ten source types', async () => {
+  it('shows one next-step action, the compact pipeline, system status and source coverage', async () => {
     await renderPage(<OverviewPage />);
-    expect(await screen.findByText('Source coverage — 10 NAKSHA data types')).toBeInTheDocument();
+    const next = await screen.findByRole('region', { name: 'Next step' }, T);
+    await waitFor(() => expect(within(next).getByRole('heading')).toHaveTextContent(/conflicts? need a decision/), T);
+    expect(within(next).getByRole('button', { name: /Review conflicts/ })).toBeInTheDocument();
+
+    const pipeline = screen.getByRole('list', { name: 'Pipeline' });
+    const stages = within(pipeline).getAllByRole('link').map((a) => a.textContent);
+    ['Sources', 'Geo', 'Extract', 'QA', 'Match', 'Validate', 'Publish'].forEach((label, i) => expect(stages[i]).toMatch(new RegExp(`^${label}`)));
+
+    expect(screen.getByText('System status')).toBeInTheDocument();
+    expect(await screen.findByText('Connected', {}, T)).toBeInTheDocument();
+    const coverage = screen.getByRole('list', { name: 'Datasets per type' });
     for (const t of ['Drone imagery', 'Orthorectified (ORI)', 'DSM / DTM', 'Cadastral maps', 'Revenue records', 'Municipal GIS', 'Utility networks', 'Ground truthing (GT)', 'GNSS / CORS survey', 'Building footprints']) {
-      expect(screen.getByText(t)).toBeInTheDocument();
+      expect(within(coverage).getByText(t)).toBeInTheDocument();
     }
-    for (const t of ['Manual GIS effort avoided', 'Record accuracy', 'Consistency', 'Ready for finalisation']) expect(screen.getByText(t)).toBeInTheDocument();
-    for (const t of ['Align scanned maps', 'AI building detection', 'Fix geometry errors', 'Quality check', 'Share with departments']) {
-      expect(screen.getByRole('button', { name: new RegExp(t) })).toBeInTheDocument();
-    }
-    await waitFor(() => expect(screen.getByRole('button', { name: /^Final records/ })).toHaveTextContent('12'), T);
-    expect(await screen.findByText('Needs your attention')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/NaN|undefined|null%/);
+  }, 15000);
+
+  it('turns a 405 from the run endpoint into a friendly error with technical details', async () => {
+    server.use(http.post('*/api/harmonization/run', () => HttpResponse.json({ message: 'Method Not Allowed' }, { status: 405 })));
+    await renderPage(<OverviewPage />);
+    await userEvent.click(await screen.findByRole('button', { name: /run harmonization again/ }, T));
+    const alert = await screen.findByRole('alert', {}, T);
+    expect(alert).toHaveTextContent('Couldn’t start harmonization');
+    expect(alert).toHaveTextContent(/did not accept this request/);
+    expect(within(alert).getByText('Technical details')).toBeInTheDocument();
+    expect(within(alert).getByText(/Method Not Allowed \(HTTP 405\)/)).toBeInTheDocument();
+    await userEvent.click(within(alert).getByRole('button', { name: 'Dismiss' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
   }, 15000);
 });
 
