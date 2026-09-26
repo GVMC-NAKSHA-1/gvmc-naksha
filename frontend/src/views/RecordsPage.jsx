@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 import { READINESS, fmtDateTime, fmtNum, humanize, signalColor, sourceColor, sourceLabel } from '../utils/format';
 import { fetchReadiness, selectReadiness } from '../Redux/slices/qualitySlice';
 
-const confColor = (c) => (c >= 0.85 ? '#198754' : c >= 0.6 ? '#ffc107' : '#dc3545');
+const confColor = (c) => (c >= 0.85 ? '#2d6a4f' : c >= 0.6 ? '#c08a1e' : '#b42318');
 const KEY_FIELDS = ['parcel_id', 'survey_no', 'khata_no', 'owner_name', 'land_use', 'area_sqm'];
 
 function download(obj, filename) {
@@ -107,9 +107,9 @@ export default function RecordsPage() {
     if (!geojson?.features?.length) return [];
     const feats = geojson.features.map((f) => ({
       ...f,
-      properties: { ...f.properties, _id: String(f.id), _color: String(f.id) === selectedId ? '#0d6efd' : confColor(f.properties?._confidence ?? 0) },
+      properties: { ...f.properties, _id: String(f.id), _color: String(f.id) === selectedId ? '#1d4f7c' : confColor(f.properties?._confidence ?? 0) },
     }));
-    return [{ id: 'golden', data: featureCollection(feats), color: '#198754', fillOpacity: 0.3, lineWidth: 1.8 }];
+    return [{ id: 'golden', data: featureCollection(feats), color: '#2d6a4f', fillOpacity: 0.3, lineWidth: 1.8 }];
   }, [geojson, selectedId]);
   const selectedFeature = geojson?.features?.find((f) => String(f.id) === selectedId);
 
@@ -190,9 +190,9 @@ export default function RecordsPage() {
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard icon={FiLayers} label="Final records" value={fmtNum(records.length)} hint={`${fmtNum(stats.members)} source features merged`} />
-        <StatCard icon={FiLayers} accent="#198754" label="Mean confidence" value={stats.avg != null ? `${Math.round(stats.avg * 100)}%` : '—'} />
-        <StatCard icon={FiLayers} accent="#20c997" label="High confidence (≥ 85%)" value={fmtNum(stats.high)} />
-        <StatCard icon={FiLayers} accent="#dc3545" label="With open conflicts" value={fmtNum(stats.withConflicts)} />
+        <StatCard icon={FiLayers} accent="#2d6a4f" label="Mean confidence" value={stats.avg != null ? `${Math.round(stats.avg * 100)}%` : '—'} />
+        <StatCard icon={FiLayers} accent="#2f8f7a" label="High confidence (≥ 85%)" value={fmtNum(stats.high)} />
+        <StatCard icon={FiLayers} accent="#b42318" label="With open conflicts" value={fmtNum(stats.withConflicts)} />
       </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
@@ -204,7 +204,7 @@ export default function RecordsPage() {
                 fitTo={selectedFeature ?? (ward?.bbox ? [ward.bbox.west, ward.bbox.south, ward.bbox.east, ward.bbox.north] : geojson)}
                 fitKey={`${wardId}-${selectedId ?? ''}`}
                 onFeatureClick={(_, f) => setSelectedId(String(f.properties?._id ?? f.id))}
-                legend={<Legend title="Confidence" items={[{ color: '#198754', label: '≥ 85%' }, { color: '#ffc107', label: '60–85%' }, { color: '#dc3545', label: '< 60%' }, { color: '#0d6efd', label: 'Selected' }]} />}
+                legend={<Legend title="Confidence" items={[{ color: '#2d6a4f', label: '≥ 85%' }, { color: '#c08a1e', label: '60–85%' }, { color: '#b42318', label: '< 60%' }, { color: '#1d4f7c', label: 'Selected' }]} />}
               >
                 {layers.length === 0 && (
                   <div className="absolute inset-x-0 bottom-10 z-10 mx-auto w-fit rounded-md bg-white px-3 py-2 text-xs text-subtle shadow">No assembled records in this ward yet.</div>

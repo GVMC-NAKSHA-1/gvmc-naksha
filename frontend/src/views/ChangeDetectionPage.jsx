@@ -73,11 +73,11 @@ function EpochComparison() {
   const layers = useMemo(() => {
     const before = rows.filter((c) => c.geometryBefore && c.changeType !== 'demolished');
     return [
-      { id: 'before', data: featureCollection(before.map((c) => ({ type: 'Feature', geometry: c.geometryBefore, properties: {} }))), color: '#6c757d', fillOpacity: 0, lineWidth: 1.5, dashed: true, interactive: false },
+      { id: 'before', data: featureCollection(before.map((c) => ({ type: 'Feature', geometry: c.geometryBefore, properties: {} }))), color: '#5b6573', fillOpacity: 0, lineWidth: 1.5, dashed: true, interactive: false },
       {
         id: 'changes',
-        data: featureCollection(rows.map((c) => ({ type: 'Feature', geometry: c.geometry, properties: { id: c.id, _color: c.id === selectedId ? '#0d6efd' : CHANGE_TYPES[c.changeType]?.color } }))),
-        color: '#dc3545', fillOpacity: 0.45, lineWidth: 2,
+        data: featureCollection(rows.map((c) => ({ type: 'Feature', geometry: c.geometry, properties: { id: c.id, _color: c.id === selectedId ? '#1d4f7c' : CHANGE_TYPES[c.changeType]?.color } }))),
+        color: '#b42318', fillOpacity: 0.45, lineWidth: 2,
       },
     ];
   }, [rows, selectedId]);
@@ -158,7 +158,7 @@ function EpochComparison() {
             fitKey={`${activeRun?.id}-${selectedId ?? ''}-${rows.length > 0}`}
             loading={changesStatus === 'loading'}
             onFeatureClick={(id, f) => id === 'changes' && setSelectedId(String(f.properties.id))}
-            legend={<Legend items={[...Object.values(CHANGE_TYPES).map((v) => ({ color: v.color, label: v.label })), { color: '#6c757d', label: 'Footprint before', shape: 'line' }]} />}
+            legend={<Legend items={[...Object.values(CHANGE_TYPES).map((v) => ({ color: v.color, label: v.label })), { color: '#5b6573', label: 'Footprint before', shape: 'line' }]} />}
           />
         </div>
         <Card className="p-0">
@@ -198,12 +198,12 @@ export default function ChangeDetectionPage() {
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
         title="Compare surveys"
-        description="Compare structure layers from two survey epochs (e.g. a 2023 footprint survey against 2025 AI extraction) to classify new, demolished, extended and vertically extended structures; satellite NDBI alerts flag change between surveys."
+        description="Compare structure layers from two survey epochs (e.g. a 2023 footprint survey against 2025 extracted footprints) to classify new, demolished, extended and vertically extended structures; satellite NDBI alerts flag change between surveys."
       />
       <div className="mb-4 flex gap-1" role="tablist">
         {[['epochs', 'Multi-epoch comparison'], ['ndbi', 'Satellite NDBI alerts']].map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-            className={cx('rounded-full border px-3 py-1.5 text-sm', tab === k ? 'border-ink bg-ink text-white' : 'border-line text-subtle hover:text-ink')}>{l}</button>
+            className={cx('rounded-sm border px-2.5 py-1 text-sm', tab === k ? 'border-primary bg-primary-light font-semibold text-primary-dark' : 'border-line text-subtle hover:text-ink')}>{l}</button>
         ))}
       </div>
       {tab === 'epochs' ? <EpochComparison /> : <NdbiAlerts />}

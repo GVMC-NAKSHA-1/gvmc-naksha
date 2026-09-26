@@ -4,8 +4,8 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiArrowLeft, FiArrowRight, FiChevronDown, FiLogIn, FiLogOut, FiMenu, FiX } from 'react-icons/fi';
 import PipelineActivity from './PipelineActivity';
-import { MdSatellite } from 'react-icons/md';
 import DemoModeBadge from './DemoModeBadge';
+import ChatPanel from './ChatPanel';
 import { cx } from './ui';
 import { ADMIN, HOME, MAP, STEPS, neighbours } from './nav';
 import { fetchWards, selectSelectedWardId, selectWards, selectWardsStatus, setSelectedWard } from '../Redux/slices/wardsSlice';
@@ -34,11 +34,11 @@ export function WardPicker({ className }) {
 
   return (
     <label className={cx('relative flex items-center gap-2', className)} title="Choose a ward — every page then shows only that ward's data">
-      <span className="hidden text-xs font-semibold uppercase tracking-wider text-subtle sm:inline">Ward</span>
+      <span className="hidden text-xs text-subtle sm:inline">Ward</span>
       <span className="relative min-w-0 flex-1">
         <select
           aria-label="Ward"
-          className="w-full min-w-0 cursor-pointer sm:min-w-44 appearance-none rounded-lg border border-line bg-canvas py-1.5 pl-3 pr-8 text-sm text-ink hover:border-primary focus:border-primary focus:shadow-focus focus:outline-none disabled:opacity-60"
+          className="h-8 w-full min-w-0 cursor-pointer appearance-none rounded-md border border-line bg-white pl-2.5 pr-8 text-sm text-ink hover:border-faint focus:border-primary focus:shadow-focus focus:outline-none disabled:opacity-60 sm:min-w-52"
           value={wardId ?? ''}
           disabled={status === 'loading'}
           onChange={(e) => dispatch(setSelectedWard(e.target.value || null))}
@@ -62,7 +62,7 @@ function HealthDot() {
     <NavLink
       to="/settings"
       title={`${detail} — click for details`}
-      className="hidden items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-subtle hover:border-primary hover:text-ink hover:no-underline sm:inline-flex"
+      className="hidden h-7 items-center gap-1.5 rounded-md border border-line px-2 text-xs text-subtle hover:bg-hover hover:text-ink hover:no-underline sm:inline-flex"
     >
       <span className={cx('size-2 rounded-full', ok ? 'bg-success' : down ? 'bg-danger' : 'bg-warning')} />
       {ok ? 'System OK' : down ? 'Backend offline' : 'System degraded'}
@@ -76,19 +76,19 @@ function useOpenConflicts() {
 }
 
 const linkCls = ({ isActive }) => cx(
-  'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:no-underline',
-  isActive ? 'bg-ink text-white' : 'text-subtle hover:bg-hover hover:text-ink',
+  'group flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-sm transition-colors hover:no-underline',
+  isActive ? 'bg-primary-light font-semibold text-primary-dark shadow-[inset_2px_0_0_var(--color-primary)]' : 'text-ink/80 hover:bg-hover hover:text-ink',
 );
 
 function CountBadge({ n }) {
   if (!n) return null;
-  return <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">{n}</span>;
+  return <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-danger-light px-1 text-[10px] font-semibold tabular-nums text-danger-dark">{n}</span>;
 }
 
 function NavItem({ item, onNavigate, count }) {
   return (
     <NavLink to={item.to} end={item.end} onClick={onNavigate} title={item.hint} className={linkCls}>
-      <item.icon className="shrink-0 text-base" />
+      <item.icon className="shrink-0 text-[15px] opacity-80" />
       <span className="flex-1 truncate">{item.label}</span>
       <CountBadge n={count} />
     </NavLink>
@@ -113,11 +113,11 @@ function SideNav({ onNavigate }) {
   const countFor = (item) => (item.badge === 'conflicts' ? openConflicts : 0);
 
   return (
-    <nav aria-label="Main" className="flex flex-col gap-0.5 px-3 py-2">
+    <nav aria-label="Main" className="flex flex-col gap-px px-2 py-2">
       <NavItem item={HOME} onNavigate={onNavigate} />
       <NavItem item={MAP} onNavigate={onNavigate} />
 
-      <div className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-faint">Workflow · 5 steps</div>
+      <div className="px-2.5 pb-1 pt-4 text-xs font-semibold text-subtle">Workflow</div>
       {STEPS.map((s) => {
         const expanded = open.has(s.n);
         const isCurrent = current === s.n;
@@ -130,23 +130,17 @@ function SideNav({ onNavigate }) {
               aria-expanded={expanded}
               title={`${expanded ? 'Hide' : 'Show'} step ${s.n}: ${s.items.map((i) => i.label).join(', ')}`}
               className={cx(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-hover',
-                isCurrent ? 'text-ink' : 'text-subtle',
+                'flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-hover',
+                isCurrent ? 'font-semibold text-ink' : 'text-ink/80',
               )}
             >
-              <span className={cx(
-                'inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] tabular-nums',
-                isCurrent ? 'bg-primary text-white' : 'bg-line-light text-subtle',
-              )}
-              >
-                {s.n}
-              </span>
+              <span className="w-4 shrink-0 text-xs tabular-nums text-subtle">{s.n}.</span>
               <span className="flex-1 truncate">{s.title}</span>
               {!expanded && <CountBadge n={stepCount} />}
               <FiChevronDown className={cx('shrink-0 text-faint transition-transform', expanded && 'rotate-180')} />
             </button>
             {expanded && (
-              <div className="mb-1 ml-3 flex flex-col gap-0.5 border-l border-line-light pl-1">
+              <div className="mb-1 ml-4 flex flex-col gap-px border-l border-line pl-1">
                 {s.items.map((item) => <NavItem key={item.to} item={item} onNavigate={onNavigate} count={countFor(item)} />)}
               </div>
             )}
@@ -159,7 +153,7 @@ function SideNav({ onNavigate }) {
 
 function AdminLinks({ onNavigate }) {
   return (
-    <div className="flex flex-col gap-0.5 border-t border-line-light px-3 py-2">
+    <div className="flex flex-col gap-px border-t border-line px-2 py-2">
       {ADMIN.map((item) => <NavItem key={item.to} item={item} onNavigate={onNavigate} />)}
     </div>
   );
@@ -167,12 +161,9 @@ function AdminLinks({ onNavigate }) {
 
 function Brand() {
   return (
-    <NavLink to="/" title="Go to the home page" className="flex items-center gap-2.5 px-6 py-5 text-ink hover:no-underline">
-      <span className="inline-flex size-9 items-center justify-center rounded-lg bg-primary text-lg text-white shadow-sm"><MdSatellite /></span>
-      <span className="leading-tight">
-        <span className="block text-sm font-bold tracking-wide">NAKSHA GeoIntegrate</span>
-        <span className="block text-[11px] text-subtle">PS 26013 · Land records</span>
-      </span>
+    <NavLink to="/" title="Go to the command centre" className="flex h-12 flex-col justify-center border-b border-line px-4 leading-tight text-ink hover:no-underline">
+      <span className="text-sm font-semibold">NAKSHA GeoIntegrate</span>
+      <span className="text-[11px] text-subtle">Land-record integration · PS 26013</span>
     </NavLink>
   );
 }
@@ -182,19 +173,17 @@ function StepPager() {
   const { pathname } = useLocation();
   const { prev, next } = neighbours(pathname);
   if (!prev && !next) return null;
-  const card = 'flex min-w-0 flex-1 flex-col gap-0.5 rounded-xl border border-line bg-white px-4 py-3 shadow-sm transition hover:border-primary hover:no-underline sm:max-w-sm';
+  const link = 'flex min-w-0 items-center gap-1.5 text-sm hover:underline';
   return (
-    <nav aria-label="Workflow steps" className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-4 pb-24 pt-2 sm:flex-row sm:justify-between sm:px-6">
+    <nav aria-label="Workflow steps" className="mx-auto mt-2 flex w-full max-w-[1600px] items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-6">
       {prev ? (
-        <Link to={prev.to} className={card} title={prev.hint}>
-          <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-subtle"><FiArrowLeft /> Previous · step {prev.step.n}</span>
-          <span className="truncate text-sm font-semibold text-ink">{prev.label}</span>
+        <Link to={prev.to} className={link} title={prev.hint}>
+          <FiArrowLeft className="shrink-0" /> <span className="text-subtle">Previous:</span> <span className="truncate font-medium">{prev.label}</span>
         </Link>
       ) : <span />}
       {next && (
-        <Link to={next.to} className={cx(card, 'sm:items-end sm:text-right')} title={next.hint}>
-          <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-primary">Next · step {next.step.n} <FiArrowRight /></span>
-          <span className="truncate text-sm font-semibold text-ink">{next.label}</span>
+        <Link to={next.to} className={link} title={next.hint}>
+          <span className="text-subtle">Next:</span> <span className="truncate font-medium">{next.label}</span> <FiArrowRight className="shrink-0" />
         </Link>
       )}
     </nav>
@@ -220,15 +209,15 @@ export default function AppShell({ children }) {
   useEffect(() => { dispatch(fetchConflicts({ wardId: wardId ?? undefined })); }, [wardId, dispatch]);
   useEffect(() => { setDrawer(false); }, [pathname]);
 
-  const authBtn = 'inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs text-subtle hover:border-primary hover:text-primary';
+  const authBtn = 'inline-flex h-7 items-center gap-1 rounded-md border border-line px-2 text-xs text-subtle hover:bg-hover hover:text-ink';
 
   return (
-    <div className="min-h-screen lg:pl-64">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-white lg:flex">
+    <div className="min-h-screen lg:pl-60">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-line bg-white lg:flex">
         <Brand />
         <div className="min-h-0 flex-1 overflow-y-auto"><SideNav /></div>
         <AdminLinks />
-        <p className="px-6 pb-3 text-[11px] leading-snug text-faint">Ministry of Rural Development · DoLR</p>
+        <p className="px-4 pb-3 text-[11px] leading-snug text-faint">Ministry of Rural Development · DoLR</p>
       </aside>
 
       <AnimatePresence>
@@ -237,12 +226,12 @@ export default function AppShell({ children }) {
             <motion.div key="bd" className="fixed inset-0 z-40 bg-black/40 lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDrawer(false)} />
             <motion.aside
               key="dr"
-              className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white shadow-xl lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-line bg-white shadow-xl lg:hidden"
               initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             >
               <div className="flex items-center justify-between pr-3">
                 <Brand />
-                <button type="button" aria-label="Close menu" title="Close menu" onClick={() => setDrawer(false)} className="inline-flex size-10 items-center justify-center rounded-full hover:bg-hover"><FiX /></button>
+                <button type="button" aria-label="Close menu" title="Close menu" onClick={() => setDrawer(false)} className="inline-flex size-9 items-center justify-center rounded-md hover:bg-hover"><FiX /></button>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto"><SideNav onNavigate={() => setDrawer(false)} /></div>
               <AdminLinks onNavigate={() => setDrawer(false)} />
@@ -251,15 +240,16 @@ export default function AppShell({ children }) {
         )}
       </AnimatePresence>
 
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-white/85 px-3 backdrop-blur sm:px-5">
-        <button type="button" aria-label="Open menu" title="Open menu" onClick={() => setDrawer(true)} className="inline-flex size-10 items-center justify-center rounded-full text-xl hover:bg-hover lg:hidden">
+      <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-line bg-white px-3 sm:px-4">
+        <button type="button" aria-label="Open menu" title="Open menu" onClick={() => setDrawer(true)} className="inline-flex size-9 items-center justify-center rounded-md text-lg hover:bg-hover lg:hidden">
           <FiMenu />
         </button>
         <WardPicker className="min-w-0 flex-1 sm:flex-none" />
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <PipelineActivity />
-          <HealthDot />
           <DemoModeBadge />
+          <HealthDot />
+          <PipelineActivity />
+          <ChatPanel />
           {AUTH_ENABLED && (user ? (
             <button type="button" className={authBtn} title={`Signed in as ${user.email} — click to sign out`} onClick={async () => { await signOut(); navigate('/'); }}>
               <FiLogOut /> <span className="hidden sm:inline">Sign out</span>
@@ -270,7 +260,7 @@ export default function AppShell({ children }) {
         </div>
       </header>
 
-      <main className="min-w-0">
+      <main className="min-w-0 pb-6">
         {children}
         <StepPager />
       </main>

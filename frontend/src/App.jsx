@@ -5,7 +5,6 @@ import { AnimatePresence } from 'framer-motion';
 import { fetchAdminConfig, selectConfigStatus } from './Redux/slices/adminSlice';
 import AppSplash from './components/AppSplash';
 import AppShell from './components/AppShell';
-import ChatPanel from './components/ChatPanel';
 import ScrollToTop from './components/ScrollToTop';
 import Loader from './components/Loader';
 import { AUTH_ENABLED } from './api/env';
@@ -63,7 +62,6 @@ export default function App() {
           </Routes>
         </Suspense>
       </AppShell>
-      <ChatPanel />
     </>
   );
 }

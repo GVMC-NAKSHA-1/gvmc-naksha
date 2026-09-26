@@ -49,7 +49,7 @@ const colorOf = (color) => ['coalesce', ['get', '_color'], color];
  * single GeoJSON source named `layer.id`.
  */
 export function overlaySpecs(layer) {
-  const color = layer.color ?? '#0d6efd';
+  const color = layer.color ?? '#1d4f7c';
   const visibility = layer.visible === false ? 'none' : 'visible';
   const line = {
     id: `${layer.id}-line`, type: 'line', source: layer.id, filter: LINES,

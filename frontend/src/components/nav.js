@@ -22,7 +22,7 @@ export const STEPS = [
   },
   {
     n: 2, title: 'Clean & detect', items: [
-      { to: '/extraction', label: 'AI building detection', icon: FiCpu, hint: 'Find building footprints in drone / satellite imagery with AI' },
+      { to: '/extraction', label: 'Building extraction', icon: FiCpu, hint: 'Extract building footprints from drone imagery, ORI and DSM/DTM rasters' },
       { to: '/topology', label: 'Fix geometry errors', icon: FiTool, hint: 'Find and fix overlapping parcels, gaps and slivers (topology QA)' },
     ],
   },
