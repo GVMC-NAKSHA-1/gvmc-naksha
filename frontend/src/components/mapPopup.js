@@ -8,7 +8,7 @@ export function propsTable(title, props, limit = 10) {
   const rows = Object.entries(props ?? {})
     .filter(([k, v]) => !k.startsWith('_') && v !== null && v !== '' && typeof v !== 'object')
     .slice(0, limit)
-    .map(([k, v]) => `<tr><td style="color:#6c757d;padding-right:8px">${esc(k)}</td><td>${esc(v)}</td></tr>`)
+    .map(([k, v]) => `<tr><td style="color:#5b6573;padding-right:8px">${esc(k)}</td><td>${esc(v)}</td></tr>`)
     .join('');
   return `<strong>${esc(title)}</strong>${rows ? `<table style="margin-top:4px">${rows}</table>` : ''}`;
 }

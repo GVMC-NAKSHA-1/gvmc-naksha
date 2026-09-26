@@ -26,7 +26,7 @@ const GROUPS = [...new Set(UPLOAD_TYPES.map((t) => SOURCE_META[t].group))];
 function TypeDot({ type }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span className="size-2.5 rounded-sm" style={{ background: SOURCE_META[type]?.color ?? '#6c757d' }} />
+      <span className="size-2.5 rounded-sm" style={{ background: SOURCE_META[type]?.color ?? '#5b6573' }} />
       {SOURCE_META[type]?.label ?? humanize(type)}
     </span>
   );
@@ -262,7 +262,7 @@ export default function SourcesPage() {
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
         title="Data sources"
-        description="Drone imagery, ORI, DSM/DTM, cadastral maps, revenue records, municipal GIS, utility networks, ground truth, GNSS/CORS and building footprints. Each upload is reprojected to WGS84, repaired and schema-profiled, then flows automatically into AI extraction, topology QA, matching and validation."
+        description="Drone imagery, ORI, DSM/DTM, cadastral maps, revenue records, municipal GIS, utility networks, ground truth, GNSS/CORS and building footprints. Each upload is reprojected to WGS84, repaired and schema-profiled, then flows automatically into building extraction, topology QA, matching and validation."
         actions={<Button variant="secondary" onClick={load} title="Reload the list of datasets"><FiRefreshCw className={status === 'loading' ? 'animate-spin' : ''} /> Refresh</Button>}
       />
 

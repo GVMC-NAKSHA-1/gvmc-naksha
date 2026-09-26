@@ -131,8 +131,8 @@ export default function AttributeMappingPage() {
               <input type="checkbox" className="accent-primary" checked={persist} onChange={(e) => setPersist(e.target.checked)} />
               Save for golden-record assembly
             </label>
-            <Button onClick={run} disabled={!a || !b || !columnsOf(a).length || !columnsOf(b).length || suggestStatus === 'loading'} title="Let the AI propose which field in dataset A matches which field in dataset B">
-              <FiCpu /> {suggestStatus === 'loading' ? 'Mapping…' : 'Suggest with AI'}
+            <Button onClick={run} disabled={!a || !b || !columnsOf(a).length || !columnsOf(b).length || suggestStatus === 'loading'} title="The schema-mapping model proposes which field in dataset A matches which field in dataset B">
+              <FiCpu /> {suggestStatus === 'loading' ? 'Mapping…' : 'Suggest mappings'}
             </Button>
           </div>
         </div>

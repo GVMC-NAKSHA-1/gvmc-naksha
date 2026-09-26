@@ -19,7 +19,7 @@ import { CONFLICT_STATUS, SEVERITY, fmtRelative, humanize, sourceLabel } from '.
 const SEV_ICON = { critical: FiAlertOctagon, high: FiAlertTriangle, medium: FiAlertTriangle, low: FiInfo };
 const SEV_BAR = { critical: 'border-l-danger', high: 'border-l-orange', medium: 'border-l-warning', low: 'border-l-info' };
 const isOpen = (c) => c.status === 'pending' || c.status === 'needs_review';
-const A_COLOR = '#0d6efd';
+const A_COLOR = '#1d4f7c';
 const B_COLOR = '#f39c12';
 
 function ConflictDetail({ conflict }) {
@@ -155,10 +155,10 @@ export default function ConflictsPage() {
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={FiAlertTriangle} accent="#fd7e14" label="Open" value={counts.open} onClick={() => setView('open')} />
-        <StatCard icon={FiAlertOctagon} accent="#dc3545" label="Critical open" value={counts.critical} onClick={() => { setView('open'); setSeverity('critical'); }} />
-        <StatCard icon={FiCheckCircle} accent="#198754" label="Resolved" value={counts.resolved} onClick={() => setView('resolved')} />
-        <StatCard icon={FiSlash} accent="#6c757d" label="Rejected" value={counts.rejected} onClick={() => setView('rejected')} />
+        <StatCard icon={FiAlertTriangle} accent="#c2571a" label="Open" value={counts.open} onClick={() => setView('open')} />
+        <StatCard icon={FiAlertOctagon} accent="#b42318" label="Critical open" value={counts.critical} onClick={() => { setView('open'); setSeverity('critical'); }} />
+        <StatCard icon={FiCheckCircle} accent="#2d6a4f" label="Resolved" value={counts.resolved} onClick={() => setView('resolved')} />
+        <StatCard icon={FiSlash} accent="#5b6573" label="Rejected" value={counts.rejected} onClick={() => setView('rejected')} />
       </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
@@ -167,7 +167,7 @@ export default function ConflictsPage() {
             <div className="flex gap-1">
               {['open', 'needs_review', 'resolved', 'rejected', 'all'].map((v) => (
                 <button key={v} type="button" onClick={() => setView(v)}
-                  className={cx('rounded-full border px-2.5 py-1 text-xs capitalize', view === v ? 'border-primary bg-primary-light font-semibold text-primary' : 'border-line text-subtle hover:text-ink')}>
+                  className={cx('rounded-sm border px-2 py-1 text-xs capitalize', view === v ? 'border-primary bg-primary-light font-semibold text-primary-dark' : 'border-line text-subtle hover:text-ink')}>
                   {humanize(v)}
                 </button>
               ))}

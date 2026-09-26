@@ -39,7 +39,7 @@ export default function ExchangePage() {
   useEffect(() => { if (active) dispatch(fetchCollectionItems({ id: active, wardId: wardId ?? undefined })); }, [active, wardId, dispatch]);
 
   const fc = items?.id === active ? items.fc : null;
-  const layers = useMemo(() => (fc ? [{ id: 'items', data: { type: 'FeatureCollection', features: fc.features }, color: '#0d6efd', fillOpacity: 0.3, circleRadius: 6 }] : []), [fc]);
+  const layers = useMemo(() => (fc ? [{ id: 'items', data: { type: 'FeatureCollection', features: fc.features }, color: '#1d4f7c', fillOpacity: 0.3, circleRadius: 6 }] : []), [fc]);
   const itemsUrl = (id) => `${base()}/collections/${id}/items${wardId ? `?wardId=${wardId}` : ''}`;
 
   return (

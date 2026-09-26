@@ -152,14 +152,15 @@ export default function GeoMap({
     <div className={cx('relative h-full w-full overflow-hidden bg-[#e8eef3]', className)}>
       <div ref={containerRef} className="h-full w-full" aria-label="Map" role="region" />
 
-      <div className="absolute left-3 top-3 z-10 inline-flex rounded-full bg-white p-0.5 text-xs font-medium shadow-md ring-1 ring-line/60">
+      <div className="absolute left-2 top-2 z-10 inline-flex overflow-hidden rounded-sm border border-line bg-white text-xs" role="group" aria-label="Basemap">
         {[{ key: 'streets', label: 'Streets', icon: FiMap }, { key: 'satellite', label: 'Satellite', icon: FiGlobe }].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             type="button"
             onClick={() => setBasemap(key)}
             aria-pressed={basemap === key}
-            className={cx('inline-flex items-center gap-1 rounded-full px-3 py-1.5 transition-colors', basemap === key ? 'bg-ink text-white' : 'text-subtle hover:text-ink')}
+            title={`Show the ${label.toLowerCase()} basemap`}
+            className={cx('inline-flex items-center gap-1 border-r border-line px-2 py-1 last:border-r-0', basemap === key ? 'bg-primary-light font-semibold text-primary-dark' : 'text-subtle hover:bg-hover hover:text-ink')}
           >
             <Icon /> {label}
           </button>
@@ -167,7 +168,7 @@ export default function GeoMap({
       </div>
 
       {legend && (
-        <div className="absolute bottom-8 left-3 z-10 max-w-[220px] rounded-md bg-white/95 p-3 text-xs shadow-md ring-1 ring-line/60">
+        <div className="absolute bottom-7 left-2 z-10 max-w-[230px] rounded-sm border border-line bg-white px-2.5 py-2 text-xs">
           {legend}
         </div>
       )}
@@ -175,7 +176,7 @@ export default function GeoMap({
       {children}
 
       {loading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/50 backdrop-blur-[2px]">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60">
           <Loader size="lg" label="Loading map data" />
         </div>
       )}

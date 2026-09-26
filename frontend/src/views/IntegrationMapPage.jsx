@@ -16,18 +16,18 @@ import { fetchFindings, selectFindings } from '../Redux/slices/qualitySlice';
 const GOLDEN = 'golden';
 const TOPO = 'topology';
 const SYNC = 'sync';
-const confColor = (c) => (c >= 0.85 ? '#198754' : c >= 0.6 ? '#ffc107' : '#dc3545');
+const confColor = (c) => (c >= 0.85 ? '#2d6a4f' : c >= 0.6 ? '#c08a1e' : '#b42318');
 
 function FeatureCard({ picked, onClose }) {
   const props = Object.entries(picked.props).filter(([k, v]) => !k.startsWith('_') && v !== null && v !== '' && typeof v !== 'object');
-  const meta = picked.layer === 'topology' ? { label: 'Topology issue', color: '#dc3545' }
-    : picked.layer === 'sync' ? { label: FINDING_TYPES[picked.props.finding_type]?.label ?? 'Sync finding', color: '#fd7e14' }
+  const meta = picked.layer === 'topology' ? { label: 'Topology issue', color: '#b42318' }
+    : picked.layer === 'sync' ? { label: FINDING_TYPES[picked.props.finding_type]?.label ?? 'Sync finding', color: '#c2571a' }
       : picked.layer === GOLDEN ? null : SOURCE_META[picked.layer];
   return (
     <div className="absolute right-3 top-14 z-10 w-72 rounded-lg bg-white p-3 text-xs shadow-lg ring-1 ring-line/60">
       <div className="mb-2 flex items-center gap-2">
-        <span className="size-2.5 rounded-sm" style={{ background: meta?.color ?? '#198754' }} />
-        <strong className="flex-1 text-sm">{meta?.label ?? 'Golden record'}</strong>
+        <span className="size-2.5 rounded-sm" style={{ background: meta?.color ?? '#2d6a4f' }} />
+        <strong className="flex-1 text-sm">{meta?.label ?? 'Final record'}</strong>
         <button type="button" aria-label="Close" title="Close" onClick={onClose} className="rounded p-1 hover:bg-hover"><FiX /></button>
       </div>
       {picked.props._was_invalid && <Badge tone="warning" className="mb-2">geometry repaired</Badge>}
@@ -85,14 +85,14 @@ export default function IntegrationMapPage() {
 
   const layers = useMemo(() => {
     const out = [];
-    if (ward?.bbox) out.push({ id: 'ward', data: featureCollection([{ type: 'Feature', properties: {}, geometry: bboxPolygon(ward.bbox) }]), color: '#0d6efd', fillOpacity: 0, dashed: true, interactive: false });
+    if (ward?.bbox) out.push({ id: 'ward', data: featureCollection([{ type: 'Feature', properties: {}, geometry: bboxPolygon(ward.bbox) }]), color: '#1d4f7c', fillOpacity: 0, dashed: true, interactive: false });
     // Imagery footprints first (bottom), then polygons, lines, points.
     const order = [...SOURCE_TYPES].sort((a, b) => ['footprint', 'polygon', 'line', 'point'].indexOf(SOURCE_META[a].geom) - ['footprint', 'polygon', 'line', 'point'].indexOf(SOURCE_META[b].geom));
     for (const t of order) {
       if (!byType[t]) continue;
       const imagery = SOURCE_META[t].geom === 'footprint';
       const features = showRepaired
-        ? byType[t].map((f) => (f.properties?._was_invalid ? { ...f, properties: { ...f.properties, _color: '#dc3545', _radius: 8 } } : f))
+        ? byType[t].map((f) => (f.properties?._was_invalid ? { ...f, properties: { ...f.properties, _color: '#b42318', _radius: 8 } } : f))
         : byType[t];
       out.push({
         id: t, data: featureCollection(features), color: SOURCE_META[t].color, visible: !hidden[t],
@@ -102,13 +102,13 @@ export default function IntegrationMapPage() {
     const openIssues = issues.filter((i) => i.wardId === wardId && i.status === 'open' && i.geometry);
     if (openIssues.length) {
       out.push({
-        id: TOPO, visible: !hidden[TOPO], color: '#dc3545', fillOpacity: 0.6, lineWidth: 2,
+        id: TOPO, visible: !hidden[TOPO], color: '#b42318', fillOpacity: 0.6, lineWidth: 2,
         data: featureCollection(openIssues.map((i) => ({ type: 'Feature', geometry: i.geometry, properties: { issue: TOPOLOGY_TYPES[i.issueType]?.label ?? i.issueType, area_sqm: i.areaSqm, _color: TOPOLOGY_TYPES[i.issueType]?.color } }))),
       });
     }
     if (findings?.features?.length) {
       out.push({
-        id: SYNC, visible: !hidden[SYNC], color: '#fd7e14', fillOpacity: 0.35, lineWidth: 2, dashed: true,
+        id: SYNC, visible: !hidden[SYNC], color: '#c2571a', fillOpacity: 0.35, lineWidth: 2, dashed: true,
         data: featureCollection(findings.features.map((f) => ({ ...f, properties: { ...f.properties, _color: FINDING_TYPES[f.properties.finding_type]?.color } }))),
       });
     }
@@ -116,7 +116,7 @@ export default function IntegrationMapPage() {
       out.push({
         id: GOLDEN,
         data: featureCollection(golden.features.map((f) => ({ ...f, properties: { ...f.properties, _color: confColor(f.properties?._confidence ?? 0) } }))),
-        color: '#198754', visible: !hidden[GOLDEN], fillOpacity: 0.12, lineWidth: 2.5,
+        color: '#2d6a4f', visible: !hidden[GOLDEN], fillOpacity: 0.12, lineWidth: 2.5,
       });
     }
     return out;
@@ -131,9 +131,9 @@ export default function IntegrationMapPage() {
   const toggle = (k) => setHidden((h) => ({ ...h, [k]: !h[k] }));
   const layerRows = [
     ...SOURCE_TYPES.filter((t) => byType[t]).map((t) => ({ key: t, label: SOURCE_META[t].label, color: SOURCE_META[t].color, count: byType[t].length, geom: SOURCE_META[t].geom })),
-    ...(golden?.features?.length ? [{ key: GOLDEN, label: 'Golden records', color: '#198754', count: golden.features.length, geom: 'polygon' }] : []),
-    ...(issues.some((i) => i.wardId === wardId && i.status === 'open') ? [{ key: TOPO, label: 'Open topology issues', color: '#dc3545', count: issues.filter((i) => i.wardId === wardId && i.status === 'open').length, geom: 'polygon' }] : []),
-    ...(findings?.features?.length ? [{ key: SYNC, label: 'Sync findings', color: '#fd7e14', count: findings.features.length, geom: 'polygon' }] : []),
+    ...(golden?.features?.length ? [{ key: GOLDEN, label: 'Final records', color: '#2d6a4f', count: golden.features.length, geom: 'polygon' }] : []),
+    ...(issues.some((i) => i.wardId === wardId && i.status === 'open') ? [{ key: TOPO, label: 'Open topology issues', color: '#b42318', count: issues.filter((i) => i.wardId === wardId && i.status === 'open').length, geom: 'polygon' }] : []),
+    ...(findings?.features?.length ? [{ key: SYNC, label: 'Sync findings', color: '#c2571a', count: findings.features.length, geom: 'polygon' }] : []),
   ];
 
   return (
@@ -199,9 +199,9 @@ export default function IntegrationMapPage() {
 
         {golden?.features?.length > 0 && (
           <section>
-            <SectionTitle className="mb-2">Golden-record confidence</SectionTitle>
+            <SectionTitle className="mb-2">Final-record confidence</SectionTitle>
             <ul className="flex flex-col gap-1 text-xs">
-              {[['#198754', '≥ 85% — high'], ['#ffc107', '60–85% — review'], ['#dc3545', '< 60% — low']].map(([c, l]) => (
+              {[['#2d6a4f', '≥ 85% — high'], ['#c08a1e', '60–85% — review'], ['#b42318', '< 60% — low']].map(([c, l]) => (
                 <li key={l} className="flex items-center gap-2"><span className="size-3 rounded-sm border-2" style={{ borderColor: c }} />{l}</li>
               ))}
             </ul>

@@ -33,7 +33,7 @@ export default function ActivityPage() {
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {[['jobs', 'Pipeline jobs'], ['audit', 'Audit trail']].map(([k, l]) => (
-          <button key={k} type="button" onClick={() => setTab(k)} className={cx('rounded-full border px-3 py-1.5 text-sm', tab === k ? 'border-ink bg-ink text-white' : 'border-line text-subtle')}>{l}</button>
+          <button key={k} type="button" onClick={() => setTab(k)} className={cx('rounded-sm border px-2.5 py-1 text-sm', tab === k ? 'border-primary bg-primary-light font-semibold text-primary-dark' : 'border-line text-subtle')}>{l}</button>
         ))}
         {tab === 'jobs' && (
           <select className={cx(selectCls, 'ml-auto')} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Job status">

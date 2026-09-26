@@ -14,7 +14,7 @@ import {
 } from '../Redux/slices/qualitySlice';
 import { FINDING_TYPES, fmtRelative, sourceColor, sourceLabel } from '../utils/format';
 
-const scoreColor = (s) => (s >= 85 ? '#198754' : s >= 60 ? '#ffc107' : '#dc3545');
+const scoreColor = (s) => (s >= 85 ? '#2d6a4f' : s >= 60 ? '#c08a1e' : '#b42318');
 
 function ScoreRing({ score, size = 96 }) {
   const r = size / 2 - 7;
@@ -78,7 +78,7 @@ export default function ValidationPage() {
   const layers = useMemo(() => [{
     id: 'findings',
     data: featureCollection(shown.map((f) => ({ ...f, properties: { ...f.properties, _color: FINDING_TYPES[f.properties.finding_type]?.color } }))),
-    color: '#dc3545', fillOpacity: 0.45, lineWidth: 2,
+    color: '#b42318', fillOpacity: 0.45, lineWidth: 2,
   }], [shown]);
 
   if (!wardId) {
@@ -94,7 +94,7 @@ export default function ValidationPage() {
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
         title="Quality check"
-        description="Every dataset is scored against data-quality rules, and the AI-extracted / surveyed structures are synchronised against the cadastral fabric to surface unregistered structures, encroachments, vacant parcels and inter-departmental attribute drift."
+        description="Every dataset is scored against data-quality rules, and the extracted / surveyed structures are synchronised against the cadastral fabric to surface unregistered structures, encroachments, vacant parcels and inter-departmental attribute drift."
         actions={<Button onClick={run} disabled={status === 'loading'} title="Score data quality and cross-check buildings against the cadastre"><FiPlay /> {status === 'loading' ? 'Queuing…' : 'Run validation'}</Button>}
       />
       {status === 'succeeded' && <div className="mb-4"><Notice tone="info">Validation queued — results refresh automatically.</Notice></div>}

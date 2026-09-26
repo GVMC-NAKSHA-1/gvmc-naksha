@@ -15,7 +15,7 @@ import {
 import { SOURCE_STATUS, humanize, sourceLabel } from '../utils/format';
 
 const MIN = { affine: 3, poly2: 6 };
-const residualColor = (m) => (m == null ? '#6c757d' : m <= 1 ? '#198754' : m <= 3 ? '#ffc107' : '#dc3545');
+const residualColor = (m) => (m == null ? '#5b6573' : m <= 1 ? '#2d6a4f' : m <= 3 ? '#c08a1e' : '#b42318');
 
 /** Click-to-place control points on the scan preview. Coordinates are reported in ORIGINAL image pixels. */
 function ScanPane({ src, gcps, pending, onPick }) {
@@ -147,7 +147,7 @@ export default function GeorefPage() {
       type: 'Feature', geometry: { type: 'Point', coordinates: [g.x, g.y] },
       properties: { n: i + 1, _color: residualColor(preview?.residuals_m?.[i]), _radius: 7 },
     }))),
-    color: '#0d6efd',
+    color: '#1d4f7c',
   }], [gcps, preview]);
 
   const ready = gcps.length >= MIN[kind];

@@ -16,7 +16,7 @@ import {
 } from '../Redux/slices/processingSlice';
 import { EXTRACTION_METHODS, JOB_STATUS, RASTER_TYPES, fmtDateTime, fmtNum, sourceLabel } from '../utils/format';
 
-const confColor = (c) => (c >= 0.85 ? '#198754' : c >= 0.6 ? '#ffc107' : '#dc3545');
+const confColor = (c) => (c >= 0.85 ? '#2d6a4f' : c >= 0.6 ? '#c08a1e' : '#b42318');
 const BINS = ['< 50', '50–100', '100–200', '200–400', '> 400'];
 
 export default function ExtractionPage() {
@@ -70,7 +70,7 @@ export default function ExtractionPage() {
       out.push({
         id: 'ai',
         data: featureCollection(fc.features.map((f) => ({ ...f, properties: { ...f.properties, _color: confColor(Number(f.properties?.confidence ?? 0.5)) } }))),
-        color: '#e8590c', fillOpacity: 0.35, lineWidth: 1.5,
+        color: '#c2571a', fillOpacity: 0.35, lineWidth: 1.5,
       });
     }
     return out;
@@ -90,8 +90,8 @@ export default function ExtractionPage() {
   return (
     <PageMotion className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <PageHeader
-        title="AI building detection"
-        description="Building footprints are extracted automatically from drone imagery, orthorectified imagery (ORI) and DSM/DTM rasters. The AI output becomes its own layer that is matched, validated and synchronised against cadastral and municipal records."
+        title="Building extraction"
+        description="Building footprints are extracted automatically from drone imagery, orthorectified imagery (ORI) and DSM/DTM rasters. The extracted footprints become their own layer that is matched, validated and synchronised against cadastral and municipal records."
       />
 
       <div className="grid items-start gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
@@ -141,17 +141,17 @@ export default function ExtractionPage() {
               <li>Connected components → polygons; Douglas–Peucker simplification.</li>
               <li>Regularisation: near-rectangular roofs snapped to the minimum rotated rectangle.</li>
               <li>Reprojected to WGS84; geodesic area, mean height and a confidence per footprint.</li>
-              <li>Stored as an “AI-extracted” layer → topology check → spatial matching → validation.</li>
+              <li>Stored as an “Extracted footprints” layer → topology check → spatial matching → validation.</li>
             </ol>
           </Card>
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard icon={FiCpu} accent="#e8590c" label="Footprints" value={fmtNum(run?.featureCount ?? fc?.features?.length)} hint={run ? `method: ${run.methodUsed ?? run.method}` : resultSource?.method && `method: ${resultSource.method}`} />
-            <StatCard icon={FiCpu} accent="#198754" label="Mean confidence" value={m.mean_confidence != null ? `${Math.round(m.mean_confidence * 100)}%` : '—'} />
-            <StatCard icon={FiCpu} accent="#6f42c1" label="Mean height" value={m.mean_height_m != null ? `${m.mean_height_m} m` : '—'} />
-            <StatCard icon={FiCpu} accent="#0d6efd" label="Built-up area" value={m.total_area_sqm != null ? `${fmtNum(m.total_area_sqm, 0)} m²` : '—'} />
+            <StatCard icon={FiCpu} accent="#c2571a" label="Footprints" value={fmtNum(run?.featureCount ?? fc?.features?.length)} hint={run ? `method: ${run.methodUsed ?? run.method}` : resultSource?.method && `method: ${resultSource.method}`} />
+            <StatCard icon={FiCpu} accent="#2d6a4f" label="Mean confidence" value={m.mean_confidence != null ? `${Math.round(m.mean_confidence * 100)}%` : '—'} />
+            <StatCard icon={FiCpu} accent="#5b4a8a" label="Mean height" value={m.mean_height_m != null ? `${m.mean_height_m} m` : '—'} />
+            <StatCard icon={FiCpu} accent="#1d4f7c" label="Built-up area" value={m.total_area_sqm != null ? `${fmtNum(m.total_area_sqm, 0)} m²` : '—'} />
           </div>
 
           <div className="h-[440px] overflow-hidden rounded-xl border border-line">
@@ -159,9 +159,9 @@ export default function ExtractionPage() {
               layers={layers}
               fitTo={fc?.features?.length ? fc : ward?.bbox ? [ward.bbox.west, ward.bbox.south, ward.bbox.east, ward.bbox.north] : null}
               fitKey={`${wardId}-${resultId}-${Boolean(fc)}`}
-              popup={(_, p) => propsTable('AI-extracted footprint', p)}
+              popup={(_, p) => propsTable('Extracted footprint', p)}
               loading={featuresById[resultId]?.status === 'loading'}
-              legend={<Legend title="Footprint confidence" items={[{ color: '#198754', label: '≥ 85%' }, { color: '#ffc107', label: '60–85%' }, { color: '#dc3545', label: '< 60%' }, { color: '#6c5ce7', label: 'Raster extent', shape: 'line' }]} />}
+              legend={<Legend title="Footprint confidence" items={[{ color: '#2d6a4f', label: '≥ 85%' }, { color: '#c08a1e', label: '60–85%' }, { color: '#b42318', label: '< 60%' }, { color: '#6c5ce7', label: 'Raster extent', shape: 'line' }]} />}
             >
               {!resultId && <div className="absolute inset-x-0 bottom-10 z-10 mx-auto w-fit rounded-md bg-white px-3 py-2 text-xs text-subtle shadow">No extraction output in this ward yet.</div>}
             </GeoMap>

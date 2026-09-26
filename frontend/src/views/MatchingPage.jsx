@@ -21,14 +21,16 @@ import { BAND, SOURCE_META, fmtNum, humanize, scoreColor, sourceLabel } from '..
 
 function ScoreBar({ score }) {
   return (
-    <div className="relative h-4 min-w-24 overflow-hidden rounded-full bg-neutral-light" title={score.toFixed(1)}>
-      <div className="h-full rounded-full" style={{ width: `${Math.min(100, score)}%`, background: scoreColor(score) }} />
-      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-ink">{score.toFixed(1)}</span>
+    <div className="flex min-w-28 items-center gap-2" title={score.toFixed(1)}>
+      <span className="w-9 text-right text-xs tabular-nums text-ink">{score.toFixed(1)}</span>
+      <span className="h-1 flex-1 overflow-hidden rounded-sm bg-line-light">
+        <span className="block h-full" style={{ width: `${Math.min(100, score)}%`, background: scoreColor(score) }} />
+      </span>
     </div>
   );
 }
 
-const A_COLOR = '#0d6efd';
+const A_COLOR = '#1d4f7c';
 const B_COLOR = '#f39c12';
 
 function MatchDetail({ id, onClose }) {
@@ -182,9 +184,9 @@ export default function MatchingPage() {
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard icon={FiGitMerge} label="Matched pairs" value={fmtNum(matches.length)} />
-        <StatCard icon={FiGitMerge} accent="#198754" label="Auto-accepted" value={matches.length ? `${Math.round((stats.auto / matches.length) * 100)}%` : '—'} hint="no manual review needed" />
-        <StatCard icon={FiGitMerge} accent="#6f42c1" label="Mean IoU" value={stats.avgIou != null ? stats.avgIou.toFixed(2) : '—'} hint="polygon ↔ polygon" />
-        <StatCard icon={FiGitMerge} accent="#fd7e14" label="Mean offset" value={stats.avgDist != null ? `${stats.avgDist.toFixed(1)} m` : '—'} hint="point ↔ centroid" />
+        <StatCard icon={FiGitMerge} accent="#2d6a4f" label="Auto-accepted" value={matches.length ? `${Math.round((stats.auto / matches.length) * 100)}%` : '—'} hint="no manual review needed" />
+        <StatCard icon={FiGitMerge} accent="#5b4a8a" label="Mean IoU" value={stats.avgIou != null ? stats.avgIou.toFixed(2) : '—'} hint="polygon ↔ polygon" />
+        <StatCard icon={FiGitMerge} accent="#c2571a" label="Mean offset" value={stats.avgDist != null ? `${stats.avgDist.toFixed(1)} m` : '—'} hint="point ↔ centroid" />
       </div>
 
       <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -197,7 +199,7 @@ export default function MatchingPage() {
             <div className="flex gap-1">
               {['', 'auto_accept', 'review', 'conflict'].map((b) => (
                 <button key={b || 'all'} type="button" onClick={() => setBand(b)}
-                  className={cx('rounded-full border px-2.5 py-1 text-xs', band === b ? 'border-primary bg-primary-light font-semibold text-primary' : 'border-line text-subtle hover:text-ink')}>
+                  className={cx('rounded-sm border px-2 py-1 text-xs', band === b ? 'border-primary bg-primary-light font-semibold text-primary-dark' : 'border-line text-subtle hover:text-ink')}>
                   {b ? BAND[b].label : 'All'}
                 </button>
               ))}

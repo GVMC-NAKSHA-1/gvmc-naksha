@@ -60,17 +60,17 @@ export default function TopologyPage() {
   const layers = useMemo(() => {
     const out = [];
     const fc = featuresById[sourceId]?.fc;
-    if (fc) out.push({ id: 'fabric', data: fc, color: '#0d6efd', fillOpacity: 0.08, lineWidth: 1, interactive: false });
+    if (fc) out.push({ id: 'fabric', data: fc, color: '#1d4f7c', fillOpacity: 0.08, lineWidth: 1, interactive: false });
     out.push({
       id: 'issues',
       data: featureCollection(issues.filter((i) => i.geometry).map((i) => ({
         type: 'Feature', geometry: i.geometry,
-        properties: { id: i.id, _color: i.id === selectedId ? '#0d6efd' : (TOPOLOGY_TYPES[i.issueType]?.color ?? '#dc3545'), _radius: 6 },
+        properties: { id: i.id, _color: i.id === selectedId ? '#1d4f7c' : (TOPOLOGY_TYPES[i.issueType]?.color ?? '#b42318'), _radius: 6 },
       }))),
-      color: '#dc3545', fillOpacity: 0.65, lineWidth: 2,
+      color: '#b42318', fillOpacity: 0.65, lineWidth: 2,
     });
     if (selected?.fixedGeometry) {
-      out.push({ id: 'fixed', data: featureCollection([{ type: 'Feature', geometry: selected.fixedGeometry, properties: {} }]), color: '#198754', fillOpacity: 0.1, lineWidth: 2.5, dashed: true, interactive: false });
+      out.push({ id: 'fixed', data: featureCollection([{ type: 'Feature', geometry: selected.fixedGeometry, properties: {} }]), color: '#2d6a4f', fillOpacity: 0.1, lineWidth: 2.5, dashed: true, interactive: false });
     }
     return out;
   }, [featuresById, sourceId, issues, selected, selectedId]);
@@ -123,10 +123,10 @@ export default function TopologyPage() {
 
         <div className="flex min-w-0 flex-col gap-4">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard icon={FiTool} accent="#fd7e14" label="Open issues" value={counts.open} />
-            <StatCard icon={FiTool} accent="#198754" label="Fixed" value={counts.fixed} hint="auto-fixed or accepted" />
-            <StatCard icon={FiTool} accent="#dc3545" label="Overlaps" value={counts.overlap ?? 0} />
-            <StatCard icon={FiTool} accent="#ffc107" label="Gaps & slivers" value={(counts.gap ?? 0) + (counts.sliver ?? 0)} />
+            <StatCard icon={FiTool} accent="#c2571a" label="Open issues" value={counts.open} />
+            <StatCard icon={FiTool} accent="#2d6a4f" label="Fixed" value={counts.fixed} hint="auto-fixed or accepted" />
+            <StatCard icon={FiTool} accent="#b42318" label="Overlaps" value={counts.overlap ?? 0} />
+            <StatCard icon={FiTool} accent="#c08a1e" label="Gaps & slivers" value={(counts.gap ?? 0) + (counts.sliver ?? 0)} />
           </div>
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
             <div className="h-[460px] overflow-hidden rounded-xl border border-line">
@@ -135,13 +135,13 @@ export default function TopologyPage() {
                 fitTo={selected?.geometry ?? featuresById[sourceId]?.fc}
                 fitKey={`${sourceId}-${selectedId ?? ''}-${Boolean(featuresById[sourceId]?.fc)}`}
                 onFeatureClick={(id, f) => id === 'issues' && setSelectedId(String(f.properties.id))}
-                legend={<Legend items={[...Object.entries(TOPOLOGY_TYPES).slice(0, 3).map(([, v]) => ({ color: v.color, label: v.label })), { color: '#198754', label: 'Proposed / applied fix', shape: 'line' }]} />}
+                legend={<Legend items={[...Object.entries(TOPOLOGY_TYPES).slice(0, 3).map(([, v]) => ({ color: v.color, label: v.label })), { color: '#2d6a4f', label: 'Proposed / applied fix', shape: 'line' }]} />}
               />
             </div>
             <Card className="flex min-w-0 flex-col p-0">
               <div className="flex gap-1 border-b border-line-light p-3">
                 {['open', 'resolved', 'all'].map((f) => (
-                  <button key={f} type="button" onClick={() => setFilter(f)} className={cx('rounded-full border px-2.5 py-1 text-xs capitalize', filter === f ? 'border-primary bg-primary-light font-semibold text-primary' : 'border-line text-subtle')}>{f}</button>
+                  <button key={f} type="button" onClick={() => setFilter(f)} className={cx('rounded-sm border px-2 py-1 text-xs capitalize', filter === f ? 'border-primary bg-primary-light font-semibold text-primary-dark' : 'border-line text-subtle')}>{f}</button>
                 ))}
               </div>
               {resolveError && <div className="px-3 pt-2"><Notice tone="danger">{resolveError}</Notice></div>}

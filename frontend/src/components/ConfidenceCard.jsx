@@ -53,7 +53,7 @@ export default function ConfidenceCard() {
                 <span className="font-semibold tabular-nums text-ink">{Math.round(v * 100)}%</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-line-light">
-                <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${v * 100}%`, background: signalColor(v) }} />
+                <div className="h-full" style={{ width: `${v * 100}%`, background: signalColor(v) }} />
               </div>
             </div>
           );
@@ -62,12 +62,12 @@ export default function ConfidenceCard() {
 
       <div className="border-t border-line-light pt-3">
         {explanationStatus === 'loading' ? (
-          <div className="flex items-center gap-2 text-xs text-subtle"><Loader size="sm" /> Loading AI explanation…</div>
+          <div className="flex items-center gap-2 text-xs text-subtle"><Loader size="sm" /> Loading model explanation…</div>
         ) : explanationStatus === 'failed' ? (
-          <p className="text-xs italic text-subtle">{explanationError || 'AI explanation unavailable.'}</p>
+          <p className="text-xs italic text-subtle">{explanationError || 'Explanation unavailable.'}</p>
         ) : p.aiExplanation ? (
           <>
-            <SectionTitle className="mb-1.5">AI Analysis</SectionTitle>
+            <SectionTitle className="mb-1.5">Model explanation</SectionTitle>
             <div className="markdown"><Markdown>{p.aiExplanation}</Markdown></div>
           </>
         ) : null}

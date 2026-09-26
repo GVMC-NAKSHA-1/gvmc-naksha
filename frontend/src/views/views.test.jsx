@@ -54,7 +54,7 @@ describe('AppShell', () => {
     const steps = ['Bring in data', 'Clean & detect', 'Match & resolve', 'Check quality', 'Publish'];
     for (const s of steps) expect(screen.getByRole('button', { name: new RegExp(s) })).toHaveAttribute('aria-expanded', 'false');
     for (const s of steps) await userEvent.click(screen.getByRole('button', { name: new RegExp(s) }));
-    for (const label of ['Data sources', 'Align scanned maps', 'AI building detection', 'Fix geometry errors', 'Match parcels', 'Match field names', 'Resolve conflicts', 'Quality check', 'Compare surveys', 'Final records', 'Share with departments']) {
+    for (const label of ['Data sources', 'Align scanned maps', 'Building extraction', 'Fix geometry errors', 'Match parcels', 'Match field names', 'Resolve conflicts', 'Quality check', 'Compare surveys', 'Final records', 'Share with departments']) {
       const link = screen.getByRole('link', { name: new RegExp(label) });
       expect(link).toHaveAttribute('title');   // every destination explains itself on hover
     }
@@ -84,17 +84,24 @@ describe('OverviewPage', () => {
 
     expect(screen.getByText('System status')).toBeInTheDocument();
     expect(await screen.findByText('Connected', {}, T)).toBeInTheDocument();
-    const coverage = screen.getByRole('list', { name: 'Datasets per type' });
+
+    // Datasets are the primary object: a real table, filterable by every source type.
+    const table = screen.getByRole('table', { name: 'Datasets' });
+    expect(within(table).getAllByRole('row').length).toBeGreaterThan(3);
+    const typeFilter = screen.getByRole('combobox', { name: 'Filter by type' });
     for (const t of ['Drone imagery', 'Orthorectified (ORI)', 'DSM / DTM', 'Cadastral maps', 'Revenue records', 'Municipal GIS', 'Utility networks', 'Ground truthing (GT)', 'GNSS / CORS survey', 'Building footprints']) {
-      expect(within(coverage).getByText(t)).toBeInTheDocument();
+      expect(within(typeFilter).getAllByRole('option').map((o) => o.textContent).some((o) => o.startsWith(`${t} (`))).toBe(true);
     }
+    await userEvent.selectOptions(typeFilter, 'cadastral');
+    within(table).getAllByRole('row').slice(1).forEach((r) => expect(r).toHaveTextContent('Cadastral maps'));
+    expect(screen.getByRole('region', { name: 'Map' })).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/NaN|undefined|null%/);
   }, 15000);
 
   it('turns a 405 from the run endpoint into a friendly error with technical details', async () => {
     server.use(http.post('*/api/harmonization/run', () => HttpResponse.json({ message: 'Method Not Allowed' }, { status: 405 })));
     await renderPage(<OverviewPage />);
-    await userEvent.click(await screen.findByRole('button', { name: /run harmonization again/ }, T));
+    await userEvent.click(await screen.findByRole('button', { name: /run harmonization again/i }, T));
     const alert = await screen.findByRole('alert', {}, T);
     expect(alert).toHaveTextContent('Couldn’t start harmonization');
     expect(alert).toHaveTextContent(/did not accept this request/);
@@ -133,7 +140,7 @@ describe('AttributeMappingPage', () => {
     await waitFor(() => expect(within(a).getAllByRole('option').length).toBeGreaterThan(2), T);
     await userEvent.selectOptions(a, 'src-1-cadastral');
     await userEvent.selectOptions(b, 'src-1-revenue');
-    await userEvent.click(screen.getByRole('button', { name: /Suggest with AI/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Suggest mappings/ }));
     expect(await screen.findByText(/Suggested mappings/, {}, T)).toBeInTheDocument();
     expect(screen.getAllByText('khata_number').length).toBeGreaterThan(0);
   }, 15000);
@@ -237,7 +244,7 @@ describe('ExchangePage', () => {
 describe('ActivityPage', () => {
   it('shows pipeline jobs and the audit trail', async () => {
     await renderPage(<ActivityPage />);
-    expect((await screen.findAllByText('AI feature extraction', {}, T)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Feature extraction', {}, T)).length).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole('button', { name: 'Audit trail' }));
     expect((await screen.findAllByText('extraction.run', {}, T)).length).toBeGreaterThan(0);
   }, 15000);

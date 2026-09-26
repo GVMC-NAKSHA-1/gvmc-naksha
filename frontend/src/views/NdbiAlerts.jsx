@@ -49,7 +49,7 @@ function NdbiAlerts() {
       geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
       properties: {
         id: p.id,
-        _color: p.id === selected?.id ? '#0d6efd' : ndbiColor(p.ndbiDelta),
+        _color: p.id === selected?.id ? '#1d4f7c' : ndbiColor(p.ndbiDelta),
         _radius: Math.max(5, Math.min(14, Math.sqrt(p.areaSqm ?? 100) / 2)),
       },
     }))),
@@ -64,9 +64,9 @@ function NdbiAlerts() {
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard icon={FiActivity} label="Detections" value={fmtNum(stats?.totalDetections)} hint={wardId ? `Ward ${wardId}` : 'All wards'} />
-        <StatCard icon={FiActivity} accent="#dc3545" label="New builds" value={fmtNum(stats?.newBuilds)} />
-        <StatCard icon={FiActivity} accent="#fd7e14" label="Change of use" value={fmtNum(stats?.changeOfUse)} />
-        <StatCard icon={FiActivity} accent="#0dcaf0" label="Awaiting verification" value={fmtNum(stats?.pendingVerification)} />
+        <StatCard icon={FiActivity} accent="#b42318" label="New builds" value={fmtNum(stats?.newBuilds)} />
+        <StatCard icon={FiActivity} accent="#c2571a" label="Change of use" value={fmtNum(stats?.changeOfUse)} />
+        <StatCard icon={FiActivity} accent="#2f6f8f" label="Awaiting verification" value={fmtNum(stats?.pendingVerification)} />
       </div>
 
       {!wardId ? (
@@ -81,7 +81,7 @@ function NdbiAlerts() {
                 fitKey={`${wardId}-${selectedP?.id ?? ''}`}
                 loading={status === 'loading'}
                 onFeatureClick={(_, f) => select(String(f.properties.id))}
-                legend={<Legend title="NDBI change" items={[...NDBI_LEGEND.map((l) => ({ ...l, shape: 'point' })), { color: '#0d6efd', label: 'Selected', shape: 'point' }]} />}
+                legend={<Legend title="NDBI change" items={[...NDBI_LEGEND.map((l) => ({ ...l, shape: 'point' })), { color: '#1d4f7c', label: 'Selected', shape: 'point' }]} />}
               />
             </div>
             <Card className="min-w-0 p-0">
@@ -127,7 +127,7 @@ function NdbiAlerts() {
           </div>
           <div className="flex flex-col gap-4">
             {selected ? (<><ConfidenceCard /><VerifyPanel /></>) : (
-              <Card><EmptyState icon={FiActivity} message="Select a detection to review its evidence signals, the AI explanation, and record the field verification." /></Card>
+              <Card><EmptyState icon={FiActivity} message="Select a detection to review its evidence signals, the model explanation, and record the field verification." /></Card>
             )}
           </div>
         </div>
