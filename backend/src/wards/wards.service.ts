@@ -50,4 +50,19 @@ export class WardsService {
     return { type: 'FeatureCollection',
              features: rows.map(r => ({ type: 'Feature', id: r.id, geometry: r.geometry, properties: r.properties })) };
   }
+
+  /** Survey of India villages (migration 0018) that touch the ward: its outline, else its bbox. */
+  async getVillages(wardId: string) {
+    const rows = await q(this.pg, `
+      WITH w AS (
+        SELECT COALESCE(boundary, ST_MakeEnvelope(bbox_west, bbox_south, bbox_east, bbox_north, 4326)) AS g
+        FROM wards WHERE id = $1)
+      SELECT v.soi_objectid AS id, v.name, v.category, v.mandal, v.district, v.vill_lgd, v.mandal_lgd,
+             v.vill_lgd = '802947' AS is_gvmc,
+             ST_AsGeoJSON(ST_SimplifyPreserveTopology(v.geom, 0.00005), 6)::json AS geometry
+      FROM villages v, w WHERE w.g IS NOT NULL AND ST_Intersects(v.geom, w.g)
+      ORDER BY v.name`, [wardId]);
+    return { type: 'FeatureCollection',
+             features: rows.map(({ id, geometry, ...properties }) => ({ type: 'Feature', id, geometry, properties })) };
+  }
 }

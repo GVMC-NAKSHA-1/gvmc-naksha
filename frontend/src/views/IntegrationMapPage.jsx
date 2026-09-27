@@ -6,7 +6,7 @@ import GeoMap from '../components/GeoMap';
 import EmptyState from '../components/EmptyState';
 import { Badge, SectionTitle, cx } from '../components/ui';
 import { bboxPolygon, featureCollection } from '../components/mapStyle';
-import { selectSelectedWard, selectSelectedWardId } from '../Redux/slices/wardsSlice';
+import { fetchWardVillages, selectSelectedWard, selectSelectedWardId, selectWardVillages } from '../Redux/slices/wardsSlice';
 import { fetchSourceFeatures, fetchSources, selectSourceFeatures, selectSources } from '../Redux/slices/sourcesSlice';
 import { fetchHarmonizedGeoJSON, selectHarmonizedGeoJSON } from '../Redux/slices/harmonizedSlice';
 import { FINDING_TYPES, SOURCE_META, SOURCE_TYPES, TOPOLOGY_TYPES, humanize } from '../utils/format';
@@ -16,11 +16,15 @@ import { fetchFindings, selectFindings } from '../Redux/slices/qualitySlice';
 const GOLDEN = 'golden';
 const TOPO = 'topology';
 const SYNC = 'sync';
+const VILLAGES = 'villages';
+const VILLAGE_COLOR = '#7a5c99';
+const GVMC_COLOR = '#4b2e6b';
 const confColor = (c) => (c >= 0.85 ? '#2d6a4f' : c >= 0.6 ? '#c08a1e' : '#b42318');
 
 function FeatureCard({ picked, onClose }) {
   const props = Object.entries(picked.props).filter(([k, v]) => !k.startsWith('_') && v !== null && v !== '' && typeof v !== 'object');
-  const meta = picked.layer === 'topology' ? { label: 'Topology issue', color: '#b42318' }
+  const meta = picked.layer === VILLAGES ? { label: 'Village (Survey of India)', color: VILLAGE_COLOR }
+    : picked.layer === 'topology' ? { label: 'Topology issue', color: '#b42318' }
     : picked.layer === 'sync' ? { label: FINDING_TYPES[picked.props.finding_type]?.label ?? 'Sync finding', color: '#c2571a' }
       : picked.layer === GOLDEN ? null : SOURCE_META[picked.layer];
   return (
@@ -53,6 +57,7 @@ export default function IntegrationMapPage() {
   const golden = useSelector(selectHarmonizedGeoJSON);
   const issues = useSelector(selectIssues);
   const findings = useSelector(selectFindings);
+  const villages = useSelector(selectWardVillages);
   const [hidden, setHidden] = useState({});
   const [showRepaired, setShowRepaired] = useState(false);
   const [picked, setPicked] = useState(null);
@@ -64,6 +69,7 @@ export default function IntegrationMapPage() {
     dispatch(fetchHarmonizedGeoJSON(wardId));
     dispatch(fetchTopologyIssues({ wardId, status: 'open' }));
     dispatch(fetchFindings(wardId));
+    dispatch(fetchWardVillages(wardId));
   }, [wardId, dispatch]);
 
   const wardSources = useMemo(() => sources.filter((s) => s.wardId === wardId && s.status === 'ready'), [sources, wardId]);
@@ -86,6 +92,13 @@ export default function IntegrationMapPage() {
   const layers = useMemo(() => {
     const out = [];
     if (ward?.bbox) out.push({ id: 'ward', data: featureCollection([{ type: 'Feature', properties: {}, geometry: bboxPolygon(ward.bbox) }]), color: '#1d4f7c', fillOpacity: 0, dashed: true, interactive: false });
+    // Official village / GVMC boundaries: reference only, drawn under every data layer.
+    if (villages?.features?.length) {
+      out.push({
+        id: VILLAGES, visible: !hidden[VILLAGES], color: VILLAGE_COLOR, fillOpacity: 0.03, lineWidth: 1.5,
+        data: featureCollection(villages.features.map((f) => ({ ...f, properties: { ...f.properties, _color: f.properties?.is_gvmc ? GVMC_COLOR : VILLAGE_COLOR } }))),
+      });
+    }
     // Imagery footprints first (bottom), then polygons, lines, points.
     const order = [...SOURCE_TYPES].sort((a, b) => ['footprint', 'polygon', 'line', 'point'].indexOf(SOURCE_META[a].geom) - ['footprint', 'polygon', 'line', 'point'].indexOf(SOURCE_META[b].geom));
     for (const t of order) {
@@ -120,7 +133,7 @@ export default function IntegrationMapPage() {
       });
     }
     return out;
-  }, [ward, byType, golden, hidden, showRepaired, issues, findings, wardId]);
+  }, [ward, villages, byType, golden, hidden, showRepaired, issues, findings, wardId]);
 
   // Fit to the vector data (imagery footprints span the whole ward and would zoom out too far).
   const vectorFC = useMemo(() => featureCollection(
@@ -130,6 +143,7 @@ export default function IntegrationMapPage() {
 
   const toggle = (k) => setHidden((h) => ({ ...h, [k]: !h[k] }));
   const layerRows = [
+    ...(villages?.features?.length ? [{ key: VILLAGES, label: 'Villages (Survey of India)', color: VILLAGE_COLOR, count: villages.features.length, geom: 'polygon' }] : []),
     ...SOURCE_TYPES.filter((t) => byType[t]).map((t) => ({ key: t, label: SOURCE_META[t].label, color: SOURCE_META[t].color, count: byType[t].length, geom: SOURCE_META[t].geom })),
     ...(golden?.features?.length ? [{ key: GOLDEN, label: 'Final records', color: '#2d6a4f', count: golden.features.length, geom: 'polygon' }] : []),
     ...(issues.some((i) => i.wardId === wardId && i.status === 'open') ? [{ key: TOPO, label: 'Open topology issues', color: '#b42318', count: issues.filter((i) => i.wardId === wardId && i.status === 'open').length, geom: 'polygon' }] : []),

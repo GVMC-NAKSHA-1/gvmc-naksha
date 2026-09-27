@@ -35,10 +35,22 @@ export const fetchWardGeoJSON = createAsyncThunk('wards/fetchWardGeoJSON', async
   }
 });
 
+/** Survey of India villages touching a ward (backend: GET /api/wards/:id/villages). */
+export const fetchWardVillages = createAsyncThunk('wards/fetchWardVillages', async (wardId) => {
+  try {
+    const { data } = await api.get(`/api/wards/${wardId}/villages`);
+    return data?.type === 'FeatureCollection' ? data : { type: 'FeatureCollection', features: [] };
+  } catch {
+    // Optional reference layer: an API without it (or no villages loaded) just shows nothing.
+    return { type: 'FeatureCollection', features: [] };
+  }
+});
+
 const initialState = {
   items: [],
   selectedWardId: null,
   wardGeoJSON: null,
+  villages: null,
   status: 'idle',
   geoJSONStatus: 'idle',
   error: null,
@@ -52,6 +64,7 @@ const wardsSlice = createSlice({
       state.selectedWardId = action.payload || null;
       state.wardGeoJSON = null;
       state.geoJSONStatus = 'idle';
+      state.villages = null;
     },
     clearErrors(state) { state.error = null; },
   },
@@ -61,7 +74,8 @@ const wardsSlice = createSlice({
       .addCase(fetchWards.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload; })
       .addCase(fetchWardGeoJSON.pending, (s) => { s.geoJSONStatus = 'loading'; })
       .addCase(fetchWardGeoJSON.fulfilled, (s, a) => { s.geoJSONStatus = 'succeeded'; s.wardGeoJSON = a.payload; })
-      .addCase(fetchWardGeoJSON.rejected, (s, a) => { s.geoJSONStatus = 'failed'; s.error = a.payload; });
+      .addCase(fetchWardGeoJSON.rejected, (s, a) => { s.geoJSONStatus = 'failed'; s.error = a.payload; })
+      .addCase(fetchWardVillages.fulfilled, (s, a) => { if (a.meta.arg === s.selectedWardId) s.villages = a.payload; });
   },
 });
 
@@ -71,6 +85,7 @@ export const selectWards = (s) => s.wards.items;
 export const selectSelectedWardId = (s) => s.wards.selectedWardId;
 export const selectSelectedWard = (s) => s.wards.items.find((w) => w.id === s.wards.selectedWardId) ?? null;
 export const selectWardGeoJSON = (s) => s.wards.wardGeoJSON;
+export const selectWardVillages = (s) => s.wards.villages;
 export const selectWardsStatus = (s) => s.wards.status;
 export const selectGeoJSONStatus = (s) => s.wards.geoJSONStatus;
 export const selectWardsError = (s) => s.wards.error;
