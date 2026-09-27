@@ -84,6 +84,17 @@ export const handlers = [
     }] });
   }),
 
+  http.get('*/api/villages', async () => {
+    await wait();
+    return HttpResponse.json({ type: 'FeatureCollection', features: WARDS.map((w, i) => {
+      const { west: x0, south: y0, east: x1, north: y1 } = w.bbox;
+      return { type: 'Feature', id: i + 1,
+               geometry: { type: 'MultiPolygon', coordinates: [[[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]] },
+               properties: { name: `${w.name} (sample)`, category: 'RURAL', mandal: w.name, district: 'Visakhapatnam',
+                             vill_lgd: String(586000 + i), mandal_lgd: '04872', is_gvmc: false } };
+    }) });
+  }),
+
   // ── Sources ──
   http.get('*/api/sources', async ({ request }) => {
     await wait();

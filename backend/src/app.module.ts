@@ -7,6 +7,7 @@ import { AuthGuard } from './common/auth.guard';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { WardsModule } from './wards/wards.module';
+import { VillagesModule } from './villages/villages.module';
 import { PropertiesModule } from './properties/properties.module';
 import { StatsModule } from './stats/stats.module';
 import { VerifyModule } from './verify/verify.module';
@@ -40,7 +41,7 @@ import { OgcModule } from './ogc/ogc.module';
     // Generous by default: map pages and QGIS paging OGC items issue many requests.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: Number(process.env.RATE_LIMIT_PER_MIN ?? 600) }]),
     InfraModule, HealthModule, AuthModule, LlmModule,
-    WardsModule, PropertiesModule, StatsModule, VerifyModule, ExportModule,
+    WardsModule, VillagesModule, PropertiesModule, StatsModule, VerifyModule, ExportModule,
     AlertsModule, BriefModule, AdminModule, ChatModule, TicketsModule,
     SourcesModule, HarmonizationModule, ConflictsModule, ConfidenceModule,
     HarmonizedModule, DroneModule,

@@ -5,8 +5,10 @@ import PageMotion from '../components/PageMotion';
 import GeoMap from '../components/GeoMap';
 import EmptyState from '../components/EmptyState';
 import { Badge, SectionTitle, cx } from '../components/ui';
-import { bboxPolygon, featureCollection } from '../components/mapStyle';
-import { fetchWardVillages, selectSelectedWard, selectSelectedWardId, selectWardVillages } from '../Redux/slices/wardsSlice';
+import { bboxOf, bboxPolygon, featureCollection } from '../components/mapStyle';
+import {
+  fetchAllVillages, fetchWardVillages, selectAllVillages, selectSelectedWard, selectSelectedWardId, selectWardVillages,
+} from '../Redux/slices/wardsSlice';
 import { fetchSourceFeatures, fetchSources, selectSourceFeatures, selectSources } from '../Redux/slices/sourcesSlice';
 import { fetchHarmonizedGeoJSON, selectHarmonizedGeoJSON } from '../Redux/slices/harmonizedSlice';
 import { FINDING_TYPES, SOURCE_META, SOURCE_TYPES, TOPOLOGY_TYPES, humanize } from '../utils/format';
@@ -60,7 +62,10 @@ export default function IntegrationMapPage() {
   const golden = useSelector(selectHarmonizedGeoJSON);
   const issues = useSelector(selectIssues);
   const findings = useSelector(selectFindings);
-  const villages = useSelector(selectWardVillages);
+  const wardVillages = useSelector(selectWardVillages);
+  const allVillages = useSelector(selectAllVillages);
+  const [showAllVillages, setShowAllVillages] = useState(false);
+  const villages = showAllVillages ? allVillages : wardVillages;
   const [hidden, setHidden] = useState({});
   const [showRepaired, setShowRepaired] = useState(false);
   const [picked, setPicked] = useState(null);
@@ -74,6 +79,9 @@ export default function IntegrationMapPage() {
     dispatch(fetchFindings(wardId));
     dispatch(fetchWardVillages(wardId));
   }, [wardId, dispatch]);
+
+  useEffect(() => { if (showAllVillages && !allVillages) dispatch(fetchAllVillages()); }, [showAllVillages, allVillages, dispatch]);
+  const allVillagesBox = useMemo(() => (allVillages ? bboxOf(allVillages) : null), [allVillages]);
 
   const wardSources = useMemo(() => sources.filter((s) => s.wardId === wardId && s.status === 'ready'), [sources, wardId]);
   useEffect(() => { wardSources.forEach((s) => dispatch(fetchSourceFeatures(s.id))); }, [wardSources, dispatch]);
@@ -158,13 +166,14 @@ export default function IntegrationMapPage() {
       <div className="relative h-[60vh] min-h-[360px] overflow-hidden rounded-xl border border-line lg:h-auto lg:flex-1">
         <GeoMap
           layers={layers}
-          fitTo={hasVectors ? vectorFC : ward?.bbox ? [ward.bbox.west, ward.bbox.south, ward.bbox.east, ward.bbox.north] : null}
-          fitKey={`${wardId}-${hasVectors}`}
+          fitTo={showAllVillages && allVillagesBox ? allVillagesBox
+            : hasVectors ? vectorFC : ward?.bbox ? [ward.bbox.west, ward.bbox.south, ward.bbox.east, ward.bbox.north] : null}
+          fitKey={`${wardId}-${hasVectors}-${showAllVillages && !!allVillagesBox}`}
           loading={loading}
           onFeatureClick={(layerId, f) => setPicked({ layer: layerId, props: f.properties ?? {} })}
         >
           {picked && <FeatureCard picked={picked} onClose={() => setPicked(null)} />}
-          {!wardId && (
+          {!wardId && !showAllVillages && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-sm">
               <EmptyState icon={FiCrosshair} message="Select a ward in the top bar to load its integrated layers." />
             </div>
@@ -202,6 +211,16 @@ export default function IntegrationMapPage() {
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="rounded-lg border border-line-light bg-white p-3">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={showAllVillages} onChange={(e) => setShowAllVillages(e.target.checked)} />
+            Show all villages{allVillages?.features?.length ? ` (${allVillages.features.length})` : ''}
+          </label>
+          <p className="mt-1 text-xs text-subtle">
+            Official Survey of India boundaries of Visakhapatnam and Anakapalli districts. Off: only the villages touching this ward.
+          </p>
         </section>
 
         <section className="rounded-lg border border-line-light bg-white p-3">

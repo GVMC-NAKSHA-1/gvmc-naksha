@@ -46,11 +46,22 @@ export const fetchWardVillages = createAsyncThunk('wards/fetchWardVillages', asy
   }
 });
 
+/** Every Survey of India village, for the "show all" overview (backend: GET /api/villages). */
+export const fetchAllVillages = createAsyncThunk('wards/fetchAllVillages', async () => {
+  try {
+    const { data } = await api.get('/api/villages');
+    return data?.type === 'FeatureCollection' ? data : { type: 'FeatureCollection', features: [] };
+  } catch {
+    return { type: 'FeatureCollection', features: [] };
+  }
+});
+
 const initialState = {
   items: [],
   selectedWardId: null,
   wardGeoJSON: null,
   villages: null,
+  allVillages: null,
   status: 'idle',
   geoJSONStatus: 'idle',
   error: null,
@@ -75,6 +86,7 @@ const wardsSlice = createSlice({
       .addCase(fetchWardGeoJSON.pending, (s) => { s.geoJSONStatus = 'loading'; })
       .addCase(fetchWardGeoJSON.fulfilled, (s, a) => { s.geoJSONStatus = 'succeeded'; s.wardGeoJSON = a.payload; })
       .addCase(fetchWardGeoJSON.rejected, (s, a) => { s.geoJSONStatus = 'failed'; s.error = a.payload; })
+      .addCase(fetchAllVillages.fulfilled, (s, a) => { s.allVillages = a.payload; })
       .addCase(fetchWardVillages.fulfilled, (s, a) => { if (a.meta.arg === s.selectedWardId) s.villages = a.payload; });
   },
 });
@@ -86,6 +98,7 @@ export const selectSelectedWardId = (s) => s.wards.selectedWardId;
 export const selectSelectedWard = (s) => s.wards.items.find((w) => w.id === s.wards.selectedWardId) ?? null;
 export const selectWardGeoJSON = (s) => s.wards.wardGeoJSON;
 export const selectWardVillages = (s) => s.wards.villages;
+export const selectAllVillages = (s) => s.wards.allVillages;
 export const selectWardsStatus = (s) => s.wards.status;
 export const selectGeoJSONStatus = (s) => s.wards.geoJSONStatus;
 export const selectWardsError = (s) => s.wards.error;
