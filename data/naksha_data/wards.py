@@ -2,8 +2,11 @@
 
 No open dataset publishes GVMC ward boundaries (not OpenStreetMap, not datameet), so the pack
 generates 98 zones and marks them synthetic:
-  1. study area  = union of the GVMC mandals from OpenStreetMap
-  2. urban area  = 100 m cells with ≥ 5 buildings / ha, morphologically closed and opened
+  1. study area  = the official GVMC outline from the Survey of India village boundaries
+                   (villages.py) when that zip is present, else the union of the GVMC mandals
+                   from OpenStreetMap
+  2. urban area  = the official outline as is; without it, 100 m cells with ≥ 5 buildings / ha,
+                   morphologically closed and opened
   3. ward seeds  = k-means (k = 98) on building centroids, so zones hold similar numbers of
                    buildings — the way real wards are balanced by population
   4. ward shapes = Voronoi cells of the seeds clipped to the urban area
@@ -123,11 +126,21 @@ def name_wards(wards_utm, places):
     return names
 
 
-def build(osm, building_paths):
+def study_region(osm):
+    """→ (region WGS84, official?) — the SoI GVMC outline if available, else the OSM mandals."""
+    from . import villages
+    if villages.available():
+        region = villages.gvmc_outline(villages.read())
+        print(f"[wards] study area = official GVMC outline (SoI, LGD {villages.GVMC_LGD})")
+        return region, True
     mandals = mandal_polygons(osm["mandals"])
     missing = [m for m in GVMC_MANDALS if m not in mandals]
-    region = unary_union([mandals[m] for m in GVMC_MANDALS if m in mandals])
     print(f"[wards] study area from {len(GVMC_MANDALS) - len(missing)} mandals (missing: {missing or 'none'})")
+    return unary_union([mandals[m] for m in GVMC_MANDALS if m in mandals]), False
+
+
+def build(osm, building_paths):
+    region, official = study_region(osm)
     region_utm = to_utm(region)
 
     geoms, _ = load_buildings(building_paths)
@@ -139,11 +152,11 @@ def build(osm, building_paths):
     fwd = Transformer.from_crs("EPSG:4326", "EPSG:32644", always_xy=True)
     ux, uy = fwd.transform(xy[inside, 0], xy[inside, 1])
     pts = np.column_stack([ux, uy])
-    urban = urban_area(pts, region_utm)
+    urban = region_utm.simplify(10) if official else urban_area(pts, region_utm)
     shapely.prepare(urban)
     in_urban = shapely.contains_xy(urban, pts[:, 0], pts[:, 1])
     pts = pts[in_urban]
-    print(f"[wards] {len(pts)} buildings in an urban area of {urban.area / 1e6:.0f} km²")
+    print(f"[wards] {len(pts)} buildings in {'the corporation' if official else 'an urban area'} of {urban.area / 1e6:.0f} km²")
 
     centers, labels = kmeans(pts, WARD_COUNT)
     cells = shapely.voronoi_polygons(MultiPoint(centers), extend_to=urban.envelope.buffer(1000))
@@ -160,8 +173,11 @@ def build(osm, building_paths):
     for n, (w, nm, cnt) in enumerate(zip(wards_utm, names, counts), start=1):
         feats.append((to_wgs(w), {"id": str(n), "name": nm, "building_count": cnt, "area_km2": round(w.area / 1e6, 3),
                                   "synthetic": True,
-                                  "method": "k-means zones of building centroids, clipped to the built-up area"}))
+                                  "method": "k-means zones of building centroids, clipped to the "
+                                            + ("official GVMC outline" if official else "built-up area")}))
     write_geojson(path("wards.geojson"), feats)
-    write_geojson(path("study_area.geojson"), [(to_wgs(urban), {"name": "GVMC built-up study area", "synthetic": True})])
+    study = ({"name": "GVMC municipal corporation (Survey of India / ORGI)", "synthetic": False, "lgd": "802947"}
+             if official else {"name": "GVMC built-up study area", "synthetic": True})
+    write_geojson(path("study_area.geojson"), [(to_wgs(urban), study)])
     print(f"[wards] {len(feats)} wards → {path('wards.geojson')}")
     return feats

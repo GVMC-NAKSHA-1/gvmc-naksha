@@ -104,6 +104,28 @@ def load_wards(wards_file, drop_demo=False):
         print(f"[load] note: wards {extra} exist in the database but not in {os.path.basename(wards_file)}")
 
 
+# ── official villages (LGD) ──────────────────────────────────────────────────
+def load_villages(src=None):
+    """Upsert the SoI village boundaries of the GVMC districts into `villages` (migration 0018)."""
+    from shapely.geometry import mapping
+    from . import villages
+    src = src or villages.source()
+    if not villages.available(src):
+        raise RuntimeError(f"village boundaries not found at {src} (after cloning, run `git lfs pull`)")
+    rows = villages.read(src)
+    with db() as conn, conn.cursor() as cur:
+        for g, p in rows:
+            cur.execute("""
+                INSERT INTO villages (vill_lgd, name, category, mandal, mandal_lgd, district, dist_lgd, geom)
+                VALUES (%(vill_lgd)s, %(name)s, %(category)s, %(mandal)s, %(mandal_lgd)s, %(district)s, %(dist_lgd)s,
+                        ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326)), 3)))
+                ON CONFLICT (vill_lgd, mandal_lgd) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category,
+                  mandal = EXCLUDED.mandal, district = EXCLUDED.district, dist_lgd = EXCLUDED.dist_lgd, geom = EXCLUDED.geom""",
+                        {**p, "geom": json.dumps(mapping(g))})
+    print(f"[load] {len(rows)} villages upserted ({', '.join(villages.DISTRICTS)})")
+    return len(rows)
+
+
 # ── files ────────────────────────────────────────────────────────────────────
 def _existing(ward_id):
     return {s["original_name"]: s for s in api("GET", f"/sources?wardId={ward_id}") or []}

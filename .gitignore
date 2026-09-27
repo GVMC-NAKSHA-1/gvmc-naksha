@@ -20,3 +20,5 @@ venv/
 # open-data pack build output and download cache (rebuild with data/README.md)
 data/out/
 data/cache/
+# Zipped copies of the Survey of India villages (the unzipped folder is in data/soi/ via Git LFS)
+ANDHRA_PRADESH.zip

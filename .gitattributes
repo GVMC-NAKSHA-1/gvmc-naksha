@@ -4,3 +4,5 @@
 *.jpg binary
 *.tif binary
 *.pdf binary
+# Survey of India village shapefile (~76 MB): stored in Git LFS — run `git lfs pull` after cloning
+data/soi/** filter=lfs diff=lfs merge=lfs -text
