@@ -85,7 +85,7 @@ export default function GeoMap({
     // Remove overlays that are gone.
     for (const id of [...dataRef.current.keys()]) {
       if (wanted.has(id)) continue;
-      for (const suffix of ['fill', 'line', 'circle']) {
+      for (const suffix of ['fill', 'casing', 'line', 'circle']) {
         if (map.getLayer(`${id}-${suffix}`)) map.removeLayer(`${id}-${suffix}`);
         boundRef.current.delete(`${id}-${suffix}`);
       }

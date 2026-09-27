@@ -17,8 +17,11 @@ const GOLDEN = 'golden';
 const TOPO = 'topology';
 const SYNC = 'sync';
 const VILLAGES = 'villages';
-const VILLAGE_COLOR = '#7a5c99';
-const GVMC_COLOR = '#4b2e6b';
+// Reference boundaries: bright hues no data layer uses, each on a dark casing (see overlaySpecs).
+const WARD_COLOR = '#00c2ff';
+const VILLAGE_COLOR = '#ffd60a';
+const GVMC_COLOR = '#ffb700';
+const CASING = '#10202e';
 const confColor = (c) => (c >= 0.85 ? '#2d6a4f' : c >= 0.6 ? '#c08a1e' : '#b42318');
 
 function FeatureCard({ picked, onClose }) {
@@ -91,11 +94,11 @@ export default function IntegrationMapPage() {
 
   const layers = useMemo(() => {
     const out = [];
-    if (ward?.bbox) out.push({ id: 'ward', data: featureCollection([{ type: 'Feature', properties: {}, geometry: bboxPolygon(ward.bbox) }]), color: '#1d4f7c', fillOpacity: 0, dashed: true, interactive: false });
+    if (ward?.bbox) out.push({ id: 'ward', data: featureCollection([{ type: 'Feature', properties: {}, geometry: bboxPolygon(ward.bbox) }]), color: WARD_COLOR, casing: CASING, lineWidth: 2.5, fillOpacity: 0, dashed: true, interactive: false });
     // Official village / GVMC boundaries: reference only, drawn under every data layer.
     if (villages?.features?.length) {
       out.push({
-        id: VILLAGES, visible: !hidden[VILLAGES], color: VILLAGE_COLOR, fillOpacity: 0.03, lineWidth: 1.5,
+        id: VILLAGES, visible: !hidden[VILLAGES], color: VILLAGE_COLOR, casing: CASING, fillOpacity: 0.06, lineWidth: 2,
         data: featureCollection(villages.features.map((f) => ({ ...f, properties: { ...f.properties, _color: f.properties?.is_gvmc ? GVMC_COLOR : VILLAGE_COLOR } }))),
       });
     }

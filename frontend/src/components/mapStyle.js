@@ -46,7 +46,8 @@ const colorOf = (color) => ['coalesce', ['get', '_color'], color];
 
 /**
  * Style layers for one overlay: polygon fill, outline/line, and circles for points — all fed by a
- * single GeoJSON source named `layer.id`.
+ * single GeoJSON source named `layer.id`. `layer.casing` (a colour) draws a wider solid line under
+ * the outline so reference boundaries stay visible on both the street and the satellite basemap.
  */
 export function overlaySpecs(layer) {
   const color = layer.color ?? '#1d4f7c';
@@ -61,12 +62,18 @@ export function overlaySpecs(layer) {
     },
   };
   if (layer.dashed) line.paint['line-dasharray'] = [2, 1.5];
+  const casing = layer.casing ? [{
+    id: `${layer.id}-casing`, type: 'line', source: layer.id, filter: LINES,
+    layout: { visibility, 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': layer.casing, 'line-width': (layer.lineWidth ?? 1.5) + 3, 'line-opacity': 0.7 },
+  }] : [];
   return [
     {
       id: `${layer.id}-fill`, type: 'fill', source: layer.id, filter: POLYGONS,
       layout: { visibility },
       paint: { 'fill-color': colorOf(color), 'fill-opacity': layer.fillOpacity ?? 0.22 },
     },
+    ...casing,
     line,
     {
       id: `${layer.id}-circle`, type: 'circle', source: layer.id, filter: POINTS,
