@@ -33,6 +33,8 @@ Every file therefore goes through the pipeline an officer's upload does: ETL, CR
 
 Every generated source is labelled in its `data_sources.metadata` with `"synthetic": true`, `"dataset": "naksha-open-pack-v1"` and a description. The *Data sources* page shows these layers with a **Synthetic** badge.
 
+**Official GVMC outline and villages.** The Survey of India / ORGI harmonised village boundaries for Andhra Pradesh are in `data/soi/ANDHRA_PRADESH/`, stored with **Git LFS**: run `git lfs install && git lfs pull` after cloning (without it the files are small pointers and the pack falls back to the OpenStreetMap study area). Another copy, folder or zip, can be used with `NAKSHA_VILLAGES_PATH`. `wards` then clips the ward zones to the official GVMC outline (LGD 802947) instead of the estimated built-up area, and `load-villages` loads the villages of Visakhapatnam and Anakapalli districts, with their LGD codes, into the `villages` table. The view `harmonized_parcels_admin` gives each golden record its village, mandal and district.
+
 **Not in the pack:** `drone_imagery` and `ori`. No open imagery exists at the 2–5 cm needed to extract footprints: satellite imagery is 10 m (Sentinel-2) or cannot be downloaded (commercial basemaps). The synthetic DSM demonstrates the imagery → AI extraction path instead. Real drone ORI loads with the same loader (section 2).
 
 ### Answer key

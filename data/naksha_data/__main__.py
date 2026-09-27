@@ -5,6 +5,8 @@
   build [--wards 4,12]          write every ward's layers + manifest.json + answers.json
   load-wards [--file F] [--drop-demo]
                                 upsert wards (outline, bbox, storage file) and re-home alerts
+  load-villages [--file PATH]   upsert the Survey of India village boundaries (LGD codes) of the
+                                GVMC districts; default: soi/ANDHRA_PRADESH/ (Git LFS)
   load [--dir D] [--wards …]    upload each ward's manifest through the API (resumable)
   wait                          block until the pipeline queue is empty
   finish [--wards …]            per-ward change detection (2023 survey vs AI extraction)
@@ -25,9 +27,10 @@ def _wards(s):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="naksha_data", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["fetch", "wards", "build", "load-wards", "load", "wait", "finish", "status", "score", "all"])
+    ap.add_argument("command", choices=["fetch", "wards", "build", "load-wards", "load-villages", "load", "wait", "finish", "status", "score", "all"])
     ap.add_argument("--wards", type=_wards, help="comma-separated ward ids (default: all)")
-    ap.add_argument("--file", default=None, help="wards GeoJSON (id, name properties); default out/wards.geojson")
+    ap.add_argument("--file", default=None, help="wards GeoJSON (id, name properties); default out/wards.geojson. "
+                    "For load-villages: the SoI village folder or zip")
     ap.add_argument("--dir", default=common.OUT, help="folder with ward-<id>/manifest.json")
     ap.add_argument("--drop-demo", action="store_true", help="delete the hand-made demo layers before loading")
     a = ap.parse_args(argv)
@@ -50,6 +53,9 @@ def main(argv=None):
     if a.command in ("load-wards", "all"):
         from . import load
         load.load_wards(a.file or common.path("wards.geojson"), drop_demo=a.drop_demo or a.command == "all")
+    if a.command == "load-villages":
+        from . import load
+        load.load_villages(a.file)
     if a.command in ("load", "all"):
         from . import load
         load.load_dir(a.dir, a.wards)
