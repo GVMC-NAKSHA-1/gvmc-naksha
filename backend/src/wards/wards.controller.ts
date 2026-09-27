@@ -12,4 +12,5 @@ export class WardsController {
                                  return this.wards.getUnassessed(id, q); }
   @Get(':id/alerts')           alerts(@Param('id') id: string) { return this.wards.getAlerts(id); }
   @Get(':id/geojson')          geojson(@Param('id') id: string) { return this.wards.getWardGeoJSON(id); }
+  @Get(':id/villages')         villages(@Param('id') id: string) { return this.wards.getVillages(id); }
 }

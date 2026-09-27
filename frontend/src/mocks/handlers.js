@@ -70,6 +70,20 @@ export const handlers = [
     return HttpResponse.json(WARDS.map((w) => ({ ...w, geojson_r2: null, detection_count: db.properties.filter((p) => p.ward_id === w.id).length })));
   }),
 
+  // Survey of India villages: one square around the ward's bbox centre, as the GVMC part of its mandal.
+  http.get('*/api/wards/:id/villages', async ({ params }) => {
+    await wait();
+    const w = WARDS.find((x) => String(x.id) === params.id);
+    if (!w) return HttpResponse.json({ type: 'FeatureCollection', features: [] });
+    const { west: x0, south: y0, east: x1, north: y1 } = w.bbox;
+    return HttpResponse.json({ type: 'FeatureCollection', features: [{
+      type: 'Feature', id: 1,
+      geometry: { type: 'MultiPolygon', coordinates: [[[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]] },
+      properties: { name: 'GVMC (M Corp. + OG) (Part)', category: 'URBAN', mandal: 'Seethammadhara', district: 'Visakhapatnam',
+                    vill_lgd: '802947', mandal_lgd: '04872', is_gvmc: true },
+    }] });
+  }),
+
   // ── Sources ──
   http.get('*/api/sources', async ({ request }) => {
     await wait();
