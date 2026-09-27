@@ -115,12 +115,13 @@ def _soi_zip(tmp_path):
             ((80.60, 16.50, 80.65, 16.55), "Guntur", "Mangalagiri", "05003", "Nidamarru", "590001")]
     shp, shx, dbf = io.BytesIO(), io.BytesIO(), io.BytesIO()
     w = shapefile.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=shapefile.POLYGON, encoding="utf-8")
+    w.field("OBJECTID", "N", 10)
     for f in ("STATE_LGD", "District", "Dist_LGD", "Sub_dist", "Subdis_LGD", "Subdis_Typ", "Vill_name", "Vill_Cat", "Vill_LGD"):
         w.field(f, "C", 50)
-    for (x0, y0, x1, y1), dist, mandal, mlgd, name, vlgd in rows:
+    for oid, ((x0, y0, x1, y1), dist, mandal, mlgd, name, vlgd) in enumerate(rows, start=1):
         ring = [to_lcc(x, y) for x, y in ((x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0))]   # clockwise = outer
         w.poly([ring])
-        w.record("28", dist, "743", mandal, mlgd, "MANDAL", name, "URBAN", vlgd)
+        w.record(oid, "28", dist, "743", mandal, mlgd, "MANDAL", name, "URBAN", vlgd)
     w.close()
     fp = tmp_path / "ANDHRA_PRADESH.zip"
     with zipfile.ZipFile(fp, "w") as z:
@@ -144,6 +145,7 @@ def test_soi_villages_are_filtered_and_reprojected(tmp_path, layout):
     rows = villages.read(src)
     assert [p["mandal"] for _, p in rows] == ["Gajuwaka", "Paravada"]            # Guntur is outside the districts
     assert rows[0][1]["vill_lgd"] == "802947" and rows[0][1]["mandal_lgd"] == "05001"
+    assert [p["objectid"] for _, p in rows] == ["1", "2"]                         # unique key: LGD codes repeat
     x0, y0, x1, y1 = rows[0][0].bounds
     assert abs(x0 - 83.20) < 1e-6 and abs(y1 - 17.75) < 1e-6                    # back in lon/lat
 
