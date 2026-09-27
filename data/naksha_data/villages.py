@@ -24,7 +24,7 @@ from .common import CACHE
 
 GVMC_LGD = "802947"
 DISTRICTS = ("Visakhapatnam", "Anakapalli")      # the districts GVMC spans
-FIELDS = {"vill_lgd": "Vill_LGD", "name": "Vill_name", "category": "Vill_Cat", "mandal": "Sub_dist",
+FIELDS = {"objectid": "OBJECTID", "vill_lgd": "Vill_LGD", "name": "Vill_name", "category": "Vill_Cat", "mandal": "Sub_dist",
           "mandal_lgd": "Subdis_LGD", "mandal_type": "Subdis_Typ", "district": "District", "dist_lgd": "Dist_LGD",
           "state_lgd": "STATE_LGD"}
 

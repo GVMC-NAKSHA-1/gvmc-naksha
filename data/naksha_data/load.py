@@ -106,22 +106,23 @@ def load_wards(wards_file, drop_demo=False):
 
 # ── official villages (LGD) ──────────────────────────────────────────────────
 def load_villages(src=None):
-    """Upsert the SoI village boundaries of the GVMC districts into `villages` (migration 0018)."""
+    """Upsert the SoI village boundaries of the GVMC districts into `villages` (migrations 0018, 0019)."""
     from shapely.geometry import mapping
     from . import villages
     src = src or villages.source()
     if not villages.available(src):
         raise RuntimeError(f"village boundaries not found at {src} (after cloning, run `git lfs pull`)")
     rows = villages.read(src)
+    params = [{**p, "vill_lgd": p["vill_lgd"] or None, "mandal_lgd": p["mandal_lgd"] or None,
+               "geom": json.dumps(mapping(g))} for g, p in rows]
     with db() as conn, conn.cursor() as cur:
-        for g, p in rows:
-            cur.execute("""
-                INSERT INTO villages (vill_lgd, name, category, mandal, mandal_lgd, district, dist_lgd, geom)
-                VALUES (%(vill_lgd)s, %(name)s, %(category)s, %(mandal)s, %(mandal_lgd)s, %(district)s, %(dist_lgd)s,
-                        ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326)), 3)))
-                ON CONFLICT (vill_lgd, mandal_lgd) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category,
-                  mandal = EXCLUDED.mandal, district = EXCLUDED.district, dist_lgd = EXCLUDED.dist_lgd, geom = EXCLUDED.geom""",
-                        {**p, "geom": json.dumps(mapping(g))})
+        psycopg2.extras.execute_batch(cur, """
+            INSERT INTO villages (soi_objectid, vill_lgd, name, category, mandal, mandal_lgd, district, dist_lgd, geom)
+            VALUES (%(objectid)s, %(vill_lgd)s, %(name)s, %(category)s, %(mandal)s, %(mandal_lgd)s, %(district)s, %(dist_lgd)s,
+                    ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326)), 3)))
+            ON CONFLICT (soi_objectid) DO UPDATE SET vill_lgd = EXCLUDED.vill_lgd, name = EXCLUDED.name,
+              category = EXCLUDED.category, mandal = EXCLUDED.mandal, mandal_lgd = EXCLUDED.mandal_lgd,
+              district = EXCLUDED.district, dist_lgd = EXCLUDED.dist_lgd, geom = EXCLUDED.geom""", params, page_size=50)
     print(f"[load] {len(rows)} villages upserted ({', '.join(villages.DISTRICTS)})")
     return len(rows)
 
