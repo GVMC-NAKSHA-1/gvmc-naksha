@@ -93,12 +93,17 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgres://gvmc:dev@db:5432/gvmcdb}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       PYTHONUNBUFFERED: "1"
-      # Optional ONNX building-segmentation model for AI extraction (mount it and set the path).
+      # Trained models live in ./models (git-ignored), mounted at /models:
+      #  - ONNX building-segmentation model for AI extraction (ml/footprint/, set the path to use it)
+      #  - ML spatial matcher (python src/train_matcher.py); without the file matching stays rule-based
       FOOTPRINT_MODEL_PATH: ${FOOTPRINT_MODEL_PATH:-}
+      MATCH_MODEL_PATH: ${MATCH_MODEL_PATH:-/models/match_model.joblib}
+      MATCH_ML_THRESHOLD: ${MATCH_ML_THRESHOLD:-0.5}
       R2_ENDPOINT: ${R2_ENDPOINT:-http://minio:9000}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-minioadmin}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-minioadmin}
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-gvmc-data}
+    volumes: ["./models:/models"]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }

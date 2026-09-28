@@ -39,6 +39,10 @@ export const mapAPIToUI = (m) => {
 
 export const mapMatchDetail = (d) => ({
   ...mapAPIToUI(d),
+  mlProbability: d.confidence_breakdown?.ml_probability != null ? Number(d.confidence_breakdown.ml_probability) : null,
+  modelVersion: d.confidence_breakdown?.model_version ?? null,
+  officerLabel: d.officer_label ?? null,
+  labelledBy: d.labelled_by ?? null,
   featureAGeom: d.feature_a_geom ?? null,
   featureAProps: d.feature_a_props ?? {},
   featureBGeom: d.feature_b_geom ?? null,
@@ -79,6 +83,19 @@ export const fetchMatchDetail = createAsyncThunk('harmonization/fetchMatchDetail
   try {
     const { data } = await api.get(`/api/harmonization/matches/${id}`);
     return mapMatchDetail(data);
+  } catch (err) {
+    return rejectWithValue(errorMessage(err));
+  }
+});
+
+/**
+ * Officer confirms (true) or rejects (false) a match. The decision is a training label for the ML
+ * matcher; a rejected match is removed and its ward re-matched.
+ */
+export const labelMatch = createAsyncThunk('harmonization/labelMatch', async ({ id, label }, { rejectWithValue }) => {
+  try {
+    const { data } = await api.post(`/api/harmonization/matches/${id}/label`, { label });
+    return { id, label, labelledBy: data?.labelled_by ?? null };
   } catch (err) {
     return rejectWithValue(errorMessage(err));
   }
@@ -125,6 +142,8 @@ const harmonizationSlice = createSlice({
     lastRunResult: null,
     matchDetail: null,
     matchDetailStatus: 'idle',
+    labelStatus: 'idle',
+    labelError: null,
     mappings: [],
     mappingsStatus: 'idle',
     suggested: [],
@@ -150,6 +169,15 @@ const harmonizationSlice = createSlice({
       .addCase(fetchMatchDetail.fulfilled, (s, a) => { s.matchDetailStatus = 'succeeded'; s.matchDetail = a.payload; })
       .addCase(fetchMatchDetail.rejected, (s) => { s.matchDetailStatus = 'failed'; s.matchDetail = null; })
 
+      .addCase(labelMatch.pending, (s) => { s.labelStatus = 'loading'; s.labelError = null; })
+      .addCase(labelMatch.fulfilled, (s, a) => {
+        s.labelStatus = 'succeeded';
+        const { id, label, labelledBy } = a.payload;
+        if (s.matchDetail?.id === id) Object.assign(s.matchDetail, { officerLabel: label, labelledBy });
+        if (!label) s.matches = s.matches.filter((m) => m.id !== id);
+      })
+      .addCase(labelMatch.rejected, (s, a) => { s.labelStatus = 'failed'; s.labelError = a.payload; })
+
       .addCase(fetchMappings.pending, (s) => { s.mappingsStatus = 'loading'; })
       .addCase(fetchMappings.fulfilled, (s, a) => { s.mappingsStatus = 'succeeded'; s.mappings = a.payload; })
       .addCase(fetchMappings.rejected, (s) => { s.mappingsStatus = 'failed'; })
@@ -170,6 +198,8 @@ export const selectRunError = (s) => s.harmonization.runError;
 export const selectLastRunResult = (s) => s.harmonization.lastRunResult;
 export const selectMatchDetail = (s) => s.harmonization.matchDetail;
 export const selectMatchDetailStatus = (s) => s.harmonization.matchDetailStatus;
+export const selectLabelStatus = (s) => s.harmonization.labelStatus;
+export const selectLabelError = (s) => s.harmonization.labelError;
 export const selectMappings = (s) => s.harmonization.mappings;
 export const selectMappingsStatus = (s) => s.harmonization.mappingsStatus;
 export const selectSuggested = (s) => s.harmonization.suggested;

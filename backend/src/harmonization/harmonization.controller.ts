@@ -1,11 +1,12 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, Req } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG } from '../infra/infra.module';
 import { q } from '../infra/pg.provider';
 import { Roles } from '../common/roles.decorator';
 import { LlmService } from '../llm/llm.service';
 import { HarmonizationService } from './harmonization.service';
-import { SchemaMapDto } from './dto';
+import { audit } from '../common/audit';
+import { LabelMatchDto, SchemaMapDto } from './dto';
 
 @Controller('harmonization')
 export class HarmonizationController {
@@ -28,6 +29,22 @@ export class HarmonizationController {
 
   @Get('matches/:id')
   matchDetail(@Param('id') id: string) { return this.svc.matchDetail(id); }
+
+  @Post('matches/:id/label')
+  @Roles('official', 'admin', 'analyst')
+  async label(@Param('id') id: string, @Body() dto: LabelMatchDto, @Req() req: any) {
+    const row = await this.svc.labelMatch(id, dto.label, req.user?.email ?? 'officer');
+    await audit(this.pg, req.user?.id, dto.label ? 'match.confirm' : 'match.reject', `matches:${id}`, dto);
+    return row;
+  }
+
+  /** Queues RETRAIN_MATCHER: retrains on officer labels; the worker keeps the better model. */
+  @Post('retrain')
+  @Roles('admin')
+  @HttpCode(202)
+  async retrain(@Query('force') force?: string) {
+    return { status: 'queued', job: await this.svc.enqueueRetrain(force === 'true') };
+  }
 
   @Post('schema-map')
   @Roles('admin', 'analyst')

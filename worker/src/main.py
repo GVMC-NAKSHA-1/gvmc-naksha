@@ -13,10 +13,11 @@ from spatial.topology_fabric import fix_topology
 from georef.gcp import georeference
 from change.epochs import detect_changes
 from validate.report import validate_ward
+from train_matcher import retrain_matcher
 
 # None of these modules build a Groq client or load a model at import time — schema_map.py and
 # assemble.py read GROQ_API_KEY lazily, extract/footprints.py loads the ONNX model only when a job
-# asks for it — so the worker starts with only DATABASE_URL / REDIS_URL / R2_* set.
+# asks for it, harmonize/ml_match.py loads the matcher model on the first HARMONIZE_WARD — so the worker starts with only DATABASE_URL / REDIS_URL / R2_* set.
 HANDLERS = {
     "NORMALIZE_SOURCE":  normalize_source,     # ETL: read → reproject → repair → store
     "DIGITIZE_SOURCE":   digitize,             # OCR of scanned revenue records
@@ -30,6 +31,7 @@ HANDLERS = {
     "GEOREFERENCE":      georeference,         # GCP geo-referencing of scans
     "DETECT_CHANGES":    detect_changes,       # multi-epoch change detection
     "VALIDATE_WARD":     validate_ward,        # data-quality + AI↔cadastre synchronisation
+    "RETRAIN_MATCHER":   retrain_matcher,      # retrain the ML matcher on officer labels
 }
 
 r = redis.from_url(os.environ["REDIS_URL"])

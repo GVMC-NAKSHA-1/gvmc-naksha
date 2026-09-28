@@ -108,7 +108,7 @@ def epoch_2025(ward_id, b2023, blocks, r):
         elif u < 0.07:                                 # one or two floors added
             h = round(h + 3.1 * int(r.integers(1, 3)), 1)
             truth.append({"change": "vertical_extension", "bldg_id": b["id"]})
-        current.append({"geom": g, "height_m": h})
+        current.append({"geom": g, "height_m": h, "bldg_id": b["id"]})
     occupied = unary_union([b["geom"].buffer(3) for b in current]) if current else Polygon()
     want = max(1, int(0.03 * len(b2023)))
     tries = 0
@@ -247,8 +247,10 @@ def write_cadastral(d, ward_id, parcels, legacy):
     return write_geojson(os.path.join(d, "cadastral.geojson"), [(to_wgs(g), a) for g, a in feats]), "EPSG:4326"
 
 
-def write_municipal(d, ward_id, parcels, r):
-    """Property-tax GIS as a zipped shapefile in UTM: re-digitised outlines, other field names."""
+def write_municipal(d, ward_id, parcels, r, truth):
+    """Property-tax GIS as a zipped shapefile in UTM: re-digitised outlines, other field names.
+    truth["municipal"]: assess_no → parcel_id (the answer key for spatial matching)."""
+    truth["municipal"] = {}
     base = os.path.join(d, "municipal_gis")
     rate = {"residential": 2.4, "commercial": 6.5, "mixed_use": 4.2, "industrial": 5.0, "institutional": 1.5}
     with shapefile.Writer(base, shapeType=shapefile.POLYGON) as w:
@@ -273,6 +275,7 @@ def write_municipal(d, ward_id, parcels, r):
                 w.poly([list(orient(poly, sign=-1.0).exterior.coords)])     # shapefile outer rings are clockwise
                 w.record(f"GVMC/{int(ward_id):03d}/{n:06d}", owner, survey, b["use"].replace("_", " ").title(),
                          b["floors"], round(plinth * SQYD, 1), round(plinth * rate.get(b["use"], 2.4)))
+                truth["municipal"][f"GVMC/{int(ward_id):03d}/{n:06d}"] = p["attrs"]["parcel_id"]
     with open(base + ".prj", "w") as f:
         f.write(esri_wkt(UTM))
     zp = base + ".zip"
@@ -283,8 +286,10 @@ def write_municipal(d, ward_id, parcels, r):
     return zp
 
 
-def write_revenue(d, ward_id, parcels, r):
-    """Webland-style revenue extract: one row per parcel, point at the parcel."""
+def write_revenue(d, ward_id, parcels, r, truth):
+    """Webland-style revenue extract: one row per parcel, point at the parcel.
+    truth["revenue_rows"]: parcel_id of each data row, in file order."""
+    truth["revenue_rows"] = []
     fp = os.path.join(d, "revenue.csv")
     with open(fp, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -301,6 +306,7 @@ def write_revenue(d, ward_id, parcels, r):
                         f"S/o {person(r).split()[0]}", round(extent, 1),
                         "Government" if a["land_use"] == "institutional" else LAND_CLASS[int(r.integers(4))],
                         round(lon, 7), round(lat, 7)])
+            truth["revenue_rows"].append(a["parcel_id"])
     return fp
 
 
@@ -359,11 +365,14 @@ def write_utilities(d, ward_id, ward_utm, utilities, roads, r):
     return write_geojson(os.path.join(d, "utility.geojson"), feats)
 
 
-def write_ground_truth(d, ward_id, current, change_truth, r):
+def write_ground_truth(d, ward_id, current, change_truth, r, truth):
+    """truth["ground_truth"]: waypoint name → bldg_id (None for a new 2025 structure)."""
     import gpxpy.gpx
     gpx = gpxpy.gpx.GPX()
+    truth["ground_truth"] = {}
     sample = [c for c in current if r.random() < 0.02]
     for n, c in enumerate(sample, start=1):
+        truth["ground_truth"][f"GT-W{ward_id}-{n:04d}"] = c.get("bldg_id")
         pt = to_wgs(c["geom"].centroid)
         lon, lat = pt.x + r.normal(0, 1.5e-5), pt.y + r.normal(0, 1.5e-5)       # ~1.5 m handheld GPS error
         floors = max(1, round((c["height_m"] - 0.3) / 3.1))
@@ -437,14 +446,16 @@ def build_ward(ward, ctx):
     current, changes = epoch_2025(ward_id, b2023, blocks, r)
 
     legacy = int(ward_id) % 3 == 0
+    # Answer key for spatial matching: which parcel every record in every layer describes.
+    match = {"buildings": {p["building"]["id"]: p["attrs"]["parcel_id"] for p in parcels if p["building"]}}
     cad_fp, cad_crs = write_cadastral(d, ward_id, parcels, legacy)
     dsm_fp, res, dtm_at = write_dsm(d, ward_utm, current, ctx["dem"], r)
     files = [
         {"path": "cadastral.geojson", "type": "cadastral", "crs": cad_crs, "captured_at": DATES["cadastral"], "synthetic": True,
          "description": "Cadastral parcels generated from OSM street blocks around real buildings"},
-        {"path": os.path.basename(write_municipal(d, ward_id, parcels, r)), "type": "municipal_gis", "crs": UTM,
+        {"path": os.path.basename(write_municipal(d, ward_id, parcels, r, match)), "type": "municipal_gis", "crs": UTM,
          "captured_at": DATES["municipal_gis"], "synthetic": True, "description": "Property-tax GIS (zipped shapefile, UTM 44N)"},
-        {"path": os.path.basename(write_revenue(d, ward_id, parcels, r)), "type": "revenue", "crs": "EPSG:4326",
+        {"path": os.path.basename(write_revenue(d, ward_id, parcels, r, match)), "type": "revenue", "crs": "EPSG:4326",
          "captured_at": DATES["revenue"], "synthetic": True, "description": "Webland-style revenue extract (CSV with lon/lat)"},
         {"path": os.path.basename(write_revenue_scan(d, ward_id, parcels, r)), "type": "revenue", "scanned": True,
          "captured_at": DATES["revenue_scan"], "synthetic": True, "description": "Scanned 1-B record (OCR)"},
@@ -456,13 +467,14 @@ def build_ward(ward, ctx):
         {"path": os.path.basename(write_utilities(d, ward_id, ward_utm, ctx["utilities"], roads, r)), "type": "utility",
          "crs": "EPSG:4326", "captured_at": DATES["utility"], "synthetic": True,
          "description": "OSM power lines / pipelines / drains + water mains generated along streets"},
-        {"path": os.path.basename(write_ground_truth(d, ward_id, current, changes, r)), "type": "ground_truth",
+        {"path": os.path.basename(write_ground_truth(d, ward_id, current, changes, r, match)), "type": "ground_truth",
          "crs": "EPSG:4326", "captured_at": DATES["ground_truth"], "synthetic": True, "description": "Field observations (GPX)"},
         {"path": os.path.basename(write_gnss(d, ward_id, blocks, dtm_at, r)), "type": "gnss_cors", "crs": UTM,
          "captured_at": DATES["gnss_cors"], "synthetic": True, "description": "GNSS/CORS control points (CSV, UTM x/y)"},
     ]
     write_json(os.path.join(d, "manifest.json"), {"ward_id": ward_id, "ward_name": ward["name"], "dataset": DATASET, "files": files})
     write_json(os.path.join(d, "answers.json"), {"ward_id": ward_id, "topology_defects": defects, "changes": changes,
+                                                  "match_truth": match,
                                                   "counts": {"buildings_2023": len(b2023), "buildings_2025": len(current),
                                                              "parcels": len(parcels), "blocks": len(blocks)}})
     print(f"[build] ward {ward_id} {ward['name']}: {len(b2023)} buildings, {len(parcels)} parcels, "

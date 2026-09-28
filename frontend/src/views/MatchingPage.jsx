@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiGitMerge, FiInfo, FiPlay, FiX } from 'react-icons/fi';
+import { FiCheck, FiGitMerge, FiInfo, FiPlay, FiSlash, FiX } from 'react-icons/fi';
 import PageMotion from '../components/PageMotion';
 import GeoMap from '../components/GeoMap';
 import Legend from '../components/MapLegend';
@@ -14,7 +14,8 @@ import {
 import { featureCollection } from '../components/mapStyle';
 import { selectSelectedWardId } from '../Redux/slices/wardsSlice';
 import {
-  clearMatchDetail, fetchMatchDetail, fetchMatches, runMatching, selectLastRunResult, selectMatchDetail,
+  clearMatchDetail, fetchMatchDetail, fetchMatches, labelMatch, runMatching, selectLabelError, selectLabelStatus,
+  selectLastRunResult, selectMatchDetail,
   selectMatchDetailStatus, selectMatches, selectMatchesStatus, selectRunError, selectRunStatus,
 } from '../Redux/slices/harmonizationSlice';
 import { BAND, SOURCE_META, fmtNum, humanize, scoreColor, sourceLabel } from '../utils/format';
@@ -26,6 +27,32 @@ function ScoreBar({ score }) {
       <span className="h-1 flex-1 overflow-hidden rounded-sm bg-line-light">
         <span className="block h-full" style={{ width: `${Math.min(100, score)}%`, background: scoreColor(score) }} />
       </span>
+    </div>
+  );
+}
+
+/** Confirm / reject → a training label for the ML matcher (POST /harmonization/matches/:id/label). */
+function OfficerDecision({ match, onRejected }) {
+  const dispatch = useDispatch();
+  const status = useSelector(selectLabelStatus);
+  const error = useSelector(selectLabelError);
+  const decide = async (label) => {
+    const res = await dispatch(labelMatch({ id: match.id, label }));
+    if (!label && labelMatch.fulfilled.match(res)) onRejected();
+  };
+  return (
+    <div>
+      <SectionTitle className="mb-2">Officer decision</SectionTitle>
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant={match.officerLabel === true ? 'primary' : 'secondary'}
+          disabled={status === 'loading'} onClick={() => decide(true)}><FiCheck /> Same record</Button>
+        <Button size="sm" variant="secondary" disabled={status === 'loading'} onClick={() => decide(false)}>
+          <FiSlash /> Not a match
+        </Button>
+        {match.officerLabel === true && <span className="text-xs text-subtle">Confirmed{match.labelledBy ? ` by ${match.labelledBy}` : ''}</span>}
+      </div>
+      <p className="mt-1 text-[11px] text-subtle">Each decision trains the matcher. A rejected pair is removed and the ward is re-matched.</p>
+      {status === 'failed' && <Notice tone="danger">{error}</Notice>}
     </div>
   );
 }
@@ -93,8 +120,15 @@ function MatchDetail({ id, onClose }) {
           </div>
           <div>
             <SectionTitle className="mb-2">Confidence scoring</SectionTitle>
+            {d.mlProbability != null && (
+              <p className="mb-2 text-xs text-subtle">
+                ML matcher: <strong className="text-ink tabular-nums">{(100 * d.mlProbability).toFixed(1)} %</strong> probability
+                these are the same land record <span className="text-faint">({d.modelVersion})</span>
+              </p>
+            )}
             <ConfidenceBreakdown breakdown={d.confidenceBreakdown} score={d.confidenceScore} />
           </div>
+          <OfficerDecision match={d} onRejected={onClose} />
           <div>
             <SectionTitle className="mb-2">Attribute comparison</SectionTitle>
             {fields.length === 0 ? <p className="text-xs text-subtle">No attributes on either feature.</p> : (
