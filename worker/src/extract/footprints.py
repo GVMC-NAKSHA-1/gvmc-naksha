@@ -68,10 +68,23 @@ def clean_mask(mask, pixel_m):
     return m.astype(bool)
 
 
-def model_probability(rgb, model_path, tile=512, overlap=64):
-    """Tile an RGB image through an ONNX segmentation model; returns an H×W probability map."""
+_sessions = {}
+
+
+def _session(model_path):
+    """One ONNX session per model file (loading a ~100 MB U-Net takes seconds); rebuilt if replaced."""
     import onnxruntime as ort
-    sess = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+    key = (model_path, os.path.getmtime(model_path))
+    if key not in _sessions:
+        _sessions.clear()
+        _sessions[key] = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+    return _sessions[key]
+
+
+def model_probability(rgb, model_path, tile=512, overlap=64):
+    """Tile an RGB image through an ONNX segmentation model; returns an H×W probability map.
+    Model contract (ml/footprint/export_onnx.py): 1×3×tile×tile float in [0,1] → 1×1×tile×tile."""
+    sess = _session(model_path)
     name = sess.get_inputs()[0].name
     h, w = rgb.shape[:2]
     prob = np.zeros((h, w), np.float32)

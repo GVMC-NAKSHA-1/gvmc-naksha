@@ -22,3 +22,9 @@ data/out/
 data/cache/
 # Zipped copies of the Survey of India villages (the unzipped folder is in data/soi/ via Git LFS)
 ANDHRA_PRADESH.zip
+
+# Trained models (ML matcher, footprint ONNX) — built by train_matcher.py / ml/footprint, not versioned
+models/
+*.onnx
+*.joblib
+ml/notebooks/naksha_work/

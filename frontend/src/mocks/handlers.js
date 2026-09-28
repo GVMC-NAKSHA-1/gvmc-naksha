@@ -171,6 +171,15 @@ export const handlers = [
       feature_b_geom: b?.f.geometry ?? null, feature_b_props: clean(b?.f.properties),
     });
   }),
+  http.post('*/api/harmonization/matches/:id/label', async ({ params, request }) => {
+    await wait();
+    const m = db.matches.find((x) => x.id === params.id);
+    if (!m) return notFound('Match');
+    const { label } = await request.json();
+    if (label) m.officer_label = true;
+    else db.matches = db.matches.filter((x) => x.id !== params.id);
+    return HttpResponse.json({ id: `label-${m.id}`, ward_id: m.ward_id, label, labelled_by: 'demo@gvmc.gov.in', labelled_at: new Date().toISOString() });
+  }),
   http.get('*/api/harmonization/matches', async ({ request }) => {
     await wait();
     const wardId = q(request, 'wardId'); const min = Number(q(request, 'minScore') ?? 0);
